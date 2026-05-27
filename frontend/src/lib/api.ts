@@ -14,7 +14,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    // /auth/login, /auth/register 요청 실패는 인터셉터에서 처리하지 않음
+    const url = err.config?.url ?? ''
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+    if (err.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('access_token')
       window.location.href = '/login'
     }
