@@ -14,6 +14,7 @@ class User(Base):
     username = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     alarms = relationship("Alarm", back_populates="user", cascade="all, delete-orphan")

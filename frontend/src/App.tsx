@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import ExpenseInput from './pages/ExpenseInput'
 import AlarmList from './pages/AlarmList'
 import SmsSettings from './pages/SmsSettings'
+import Admin from './pages/Admin'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
@@ -41,6 +42,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SmsSettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Admin />
           </ProtectedRoute>
         }
       />

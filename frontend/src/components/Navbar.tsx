@@ -38,6 +38,18 @@ export default function Navbar() {
               {n.label}
             </Link>
           ))}
+          {user?.is_admin && (
+            <Link
+              to="/admin"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === '/admin'
+                  ? 'text-emerald-600'
+                  : 'text-emerald-500 hover:text-emerald-700'
+              }`}
+            >
+              관리자
+            </Link>
+          )}
           <span className="text-sm text-gray-500">{user?.username}</span>
           <button
             onClick={handleLogout}

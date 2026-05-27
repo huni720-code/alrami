@@ -59,6 +59,7 @@ export interface User {
   email: string
   username: string
   is_active: boolean
+  is_admin: boolean
   created_at: string
 }
 
@@ -103,4 +104,14 @@ export interface ExpenseSummary {
   total: string
   by_category: Record<string, string>
   count: number
+}
+
+// Admin
+export const adminApi = {
+  triggerCrawl: (target: string) => api.post(`/admin/crawl/${target}`),
+  listTasks: () => api.get('/admin/crawl/tasks'),
+  getTask: (taskId: number) => api.get(`/admin/crawl/tasks/${taskId}`),
+  approveTask: (taskId: number) => api.post(`/admin/crawl/tasks/${taskId}/approve`),
+  getData: (type: 'cards' | 'telecom') => api.get(`/admin/data/${type}`),
+  deleteData: (type: string, id: number) => api.delete(`/admin/data/${type}/${id}`),
 }
