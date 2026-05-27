@@ -1,22 +1,30 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import extract, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
 from app.crawlers.card_crawler import CardCrawler
 from app.crawlers.telecom_crawler import TelecomCrawler
+from app.models.admin_log import AdminLog
+from app.models.alarm import Alarm
 from app.models.crawl_task import CrawlTask
+from app.models.expense import Expense
 from app.models.product import Card, CardBenefit, TelecomPlan
 from app.models.user import User
 
 router = APIRouter(prefix="/admin", tags=["관리자"])
 
-CRAWLER_MAP = {
-    "cards": CardCrawler,
-    "telecom": TelecomCrawler,
-}
+CRAWLER_MAP = {"cards": CardCrawler, "telecom": TelecomCrawler}
+
+
+class UserUpdateBody(BaseModel):
+    is_active: Optional[bool] = None
+    is_admin: Optional[bool] = None
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
@@ -25,21 +33,35 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def _log(
+    db: Session,
+    action: str,
+    by: int,
+    *,
+    target_type: str = None,
+    target_id: int = None,
+    detail: dict = None,
+):
+    db.add(AdminLog(
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        detail=detail,
+        performed_by=by,
+    ))
+
+
 async def _run_crawl(task_id: int, target: str) -> None:
-    """백그라운드에서 실행 — 자체 DB 세션 사용"""
     db = SessionLocal()
     task = None
     try:
         task = db.query(CrawlTask).filter(CrawlTask.id == task_id).first()
         if not task:
             return
-
         task.status = "running"
         db.commit()
-
         crawler = CRAWLER_MAP[target]()
         result = await crawler.crawl()
-
         task.status = "completed"
         task.result_json = result
         task.record_count = len([r for r in result if "error" not in r])
@@ -54,7 +76,195 @@ async def _run_crawl(task_id: int, target: str) -> None:
         db.close()
 
 
-# ── 크롤링 트리거 ──────────────────────────────────────────────────────────
+# ── KPI 통계 ─────────────────────────────────────────────────────────────────
+
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    last_task = (
+        db.query(CrawlTask)
+        .filter(CrawlTask.status == "completed", CrawlTask.approved == True)
+        .order_by(CrawlTask.completed_at.desc())
+        .first()
+    )
+
+    return {
+        "users_total": db.query(User).count(),
+        "users_new_7d": db.query(User).filter(User.created_at >= week_ago).count(),
+        "expenses_total": db.query(Expense).count(),
+        "expenses_this_month": db.query(Expense).filter(
+            extract("year", Expense.expense_date) == now.year,
+            extract("month", Expense.expense_date) == now.month,
+        ).count(),
+        "alarms_active": db.query(Alarm).filter(Alarm.is_active == True).count(),
+        "cards_count": db.query(Card).filter(Card.is_active == True).count(),
+        "telecom_count": db.query(TelecomPlan).filter(TelecomPlan.is_active == True).count(),
+        "last_crawl_month": (
+            last_task.completed_at.strftime("%Y-%m")
+            if last_task and last_task.completed_at
+            else None
+        ),
+        "logs_today": db.query(AdminLog).filter(AdminLog.created_at >= today_start).count(),
+    }
+
+
+# ── 사용자 관리 ───────────────────────────────────────────────────────────────
+
+@router.get("/users")
+def list_users(
+    search: str = Query(default=""),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    q = db.query(User)
+    if search:
+        q = q.filter(
+            or_(User.email.ilike(f"%{search}%"), User.username.ilike(f"%{search}%"))
+        )
+    users = q.order_by(User.created_at.desc()).all()
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "username": u.username,
+            "is_active": u.is_active,
+            "is_admin": u.is_admin,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "expense_count": len(u.expenses),
+            "alarm_count": len(u.alarms),
+        }
+        for u in users
+    ]
+
+
+@router.patch("/users/{user_id}")
+def update_user(
+    user_id: int,
+    body: UserUpdateBody,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    if target.id == admin.id:
+        raise HTTPException(status_code=400, detail="자신의 계정은 수정할 수 없습니다.")
+
+    if body.is_active is not None:
+        target.is_active = body.is_active
+        _log(
+            db,
+            "user.activate" if body.is_active else "user.deactivate",
+            admin.id,
+            target_type="user",
+            target_id=target.id,
+            detail={"email": target.email},
+        )
+    if body.is_admin is not None:
+        target.is_admin = body.is_admin
+        _log(
+            db,
+            "user.grant_admin" if body.is_admin else "user.revoke_admin",
+            admin.id,
+            target_type="user",
+            target_id=target.id,
+            detail={"email": target.email},
+        )
+
+    db.commit()
+    db.refresh(target)
+    return {"id": target.id, "is_active": target.is_active, "is_admin": target.is_admin}
+
+
+# ── 알림 관리 ─────────────────────────────────────────────────────────────────
+
+@router.get("/alarms")
+def list_all_alarms(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    alarms = db.query(Alarm).join(User).order_by(Alarm.created_at.desc()).all()
+    return [
+        {
+            "id": a.id,
+            "title": a.title,
+            "alarm_time": str(a.alarm_time),
+            "days_of_week": a.days_of_week,
+            "is_active": a.is_active,
+            "user_id": a.user_id,
+            "user_email": a.user.email,
+            "username": a.user.username,
+        }
+        for a in alarms
+    ]
+
+
+# ── 운영 로그 ─────────────────────────────────────────────────────────────────
+
+@router.get("/logs")
+def list_logs(
+    action: str = Query(default=""),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    user_cache: dict[int, str] = {}
+
+    def get_email(uid: int) -> str:
+        if uid not in user_cache:
+            u = db.query(User).filter(User.id == uid).first()
+            user_cache[uid] = u.email if u else "unknown"
+        return user_cache[uid]
+
+    # AdminLog 항목
+    q = db.query(AdminLog).order_by(AdminLog.created_at.desc())
+    if action:
+        q = q.filter(AdminLog.action.ilike(f"%{action}%"))
+    admin_logs = q.limit(200).all()
+
+    result = [
+        {
+            "id": f"log_{log.id}",
+            "action": log.action,
+            "target_type": log.target_type,
+            "target_id": log.target_id,
+            "detail": log.detail,
+            "performed_by_email": get_email(log.performed_by),
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in admin_logs
+    ]
+
+    # CrawlTask 히스토리
+    if not action or "crawl" in action:
+        tasks = db.query(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(50).all()
+        for t in tasks:
+            if t.status == "completed":
+                event = "crawl.completed"
+            elif t.status == "failed":
+                event = "crawl.failed"
+            else:
+                event = "crawl.trigger"
+            ts = t.completed_at or t.created_at
+            result.append({
+                "id": f"crawl_{t.id}",
+                "action": event,
+                "target_type": "crawl",
+                "target_id": t.id,
+                "detail": {
+                    "target": t.target,
+                    "record_count": t.record_count,
+                    "approved": t.approved,
+                    "status": t.status,
+                },
+                "performed_by_email": get_email(t.created_by),
+                "created_at": ts.isoformat() if ts else None,
+            })
+
+    result.sort(key=lambda x: x["created_at"] or "", reverse=True)
+    return result[:150]
+
+
+# ── 크롤링 트리거 ─────────────────────────────────────────────────────────────
 
 @router.post("/crawl/{target}", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_crawl(
@@ -75,20 +285,18 @@ async def trigger_crawl(
 
     task = CrawlTask(target=target, status="pending", created_by=admin.id)
     db.add(task)
+    db.flush()
+    _log(db, "crawl.trigger", admin.id, target_type="crawl", target_id=task.id, detail={"target": target})
     db.commit()
     db.refresh(task)
-
     background_tasks.add_task(_run_crawl, task.id, target)
     return {"task_id": task.id, "target": target, "status": "pending"}
 
 
-# ── 태스크 조회 ────────────────────────────────────────────────────────────
+# ── 태스크 조회 ───────────────────────────────────────────────────────────────
 
 @router.get("/crawl/tasks")
-def list_tasks(
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
+def list_tasks(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     tasks = db.query(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(30).all()
     return [
         {
@@ -106,11 +314,7 @@ def list_tasks(
 
 
 @router.get("/crawl/tasks/{task_id}")
-def get_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
+def get_task(task_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     task = db.query(CrawlTask).filter(CrawlTask.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="태스크를 찾을 수 없습니다.")
@@ -127,7 +331,7 @@ def get_task(
     }
 
 
-# ── 승인 (결과 → DB 저장) ──────────────────────────────────────────────────
+# ── 승인 (결과 → DB 저장) ─────────────────────────────────────────────────────
 
 @router.post("/crawl/tasks/{task_id}/approve")
 def approve_task(
@@ -147,7 +351,6 @@ def approve_task(
     saved = 0
 
     if task.target == "telecom":
-        # 같은 달 기존 데이터 비활성화
         db.query(TelecomPlan).filter(TelecomPlan.data_month == data_month).update({"is_active": False})
         for item in (task.result_json or []):
             if "error" in item:
@@ -164,7 +367,6 @@ def approve_task(
             saved += 1
 
     elif task.target == "cards":
-        # 같은 달 기존 데이터 비활성화
         db.query(Card).filter(Card.data_month == data_month).update({"is_active": False})
         for item in (task.result_json or []):
             if "error" in item:
@@ -191,17 +393,25 @@ def approve_task(
             saved += 1
 
     task.approved = True
+    _log(
+        db, "crawl.approve", admin.id,
+        target_type="crawl", target_id=task_id,
+        detail={"target": task.target, "saved": saved, "data_month": data_month},
+    )
     db.commit()
     return {"saved": saved, "task_id": task_id, "data_month": data_month}
 
 
-# ── 저장된 데이터 조회 ─────────────────────────────────────────────────────
+# ── 저장된 데이터 조회 ────────────────────────────────────────────────────────
 
 @router.get("/data/telecom")
 def get_telecom_data(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
-    plans = db.query(TelecomPlan).filter(TelecomPlan.is_active == True).order_by(
-        TelecomPlan.carrier, TelecomPlan.monthly_fee
-    ).all()
+    plans = (
+        db.query(TelecomPlan)
+        .filter(TelecomPlan.is_active == True)
+        .order_by(TelecomPlan.carrier, TelecomPlan.monthly_fee)
+        .all()
+    )
     return [
         {
             "id": p.id,
@@ -219,9 +429,12 @@ def get_telecom_data(db: Session = Depends(get_db), admin: User = Depends(requir
 
 @router.get("/data/cards")
 def get_cards_data(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
-    cards = db.query(Card).filter(Card.is_active == True).order_by(
-        Card.company, Card.name
-    ).all()
+    cards = (
+        db.query(Card)
+        .filter(Card.is_active == True)
+        .order_by(Card.company, Card.name)
+        .all()
+    )
     return [
         {
             "id": c.id,
@@ -260,5 +473,10 @@ def delete_data(
     item = db.query(model).filter(model.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="데이터를 찾을 수 없습니다.")
+    _log(
+        db, "data.delete", admin.id,
+        target_type=data_type, target_id=item_id,
+        detail={"name": getattr(item, "name", None) or getattr(item, "plan_name", None)},
+    )
     db.delete(item)
     db.commit()

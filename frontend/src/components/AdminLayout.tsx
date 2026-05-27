@@ -1,0 +1,142 @@
+import { useEffect } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+
+const NAV = [
+  {
+    to: '/admin/overview',
+    label: '개요',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/admin/users',
+    label: '사용자 관리',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/admin/engine',
+    label: '추천엔진',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    to: '/admin/data',
+    label: '데이터 관리',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+        <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
+        <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
+        <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/admin/notifications',
+    label: '알림 관리',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/admin/logs',
+    label: '운영 로그',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+        <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+]
+
+export default function AdminLayout() {
+  const { user, logout } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user && !user.is_admin) navigate('/dashboard')
+  }, [user, navigate])
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  if (!user?.is_admin) return null
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* 사이드바 */}
+      <aside className="w-[220px] bg-gray-900 text-white flex flex-col flex-shrink-0">
+        {/* 로고 */}
+        <div className="px-5 py-5 border-b border-gray-800">
+          <div className="text-base font-bold text-white">알라미</div>
+          <div className="text-[10px] text-emerald-400 font-semibold tracking-widest mt-0.5 uppercase">
+            Admin Console
+          </div>
+        </div>
+
+        {/* 네비게이션 */}
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
+          {NAV.map((item) => {
+            const active = location.pathname === item.to
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm transition-colors ${
+                  active
+                    ? 'bg-emerald-600 text-white font-medium'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <span className="flex-shrink-0">{item.icon}</span>
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* 사용자 정보 */}
+        <div className="px-4 py-4 border-t border-gray-800">
+          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">관리자</div>
+          <div className="text-sm text-gray-200 font-medium truncate">{user.username}</div>
+          <div className="text-xs text-gray-500 truncate mb-3">{user.email}</div>
+          <div className="flex gap-2">
+            <Link
+              to="/dashboard"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              서비스로
+            </Link>
+            <span className="text-gray-700">·</span>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* 메인 콘텐츠 */}
+      <main className="flex-1 overflow-auto">
+        <Outlet />
+      </main>
+    </div>
+  )
+}

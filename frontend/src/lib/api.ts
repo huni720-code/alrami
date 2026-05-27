@@ -108,10 +108,66 @@ export interface ExpenseSummary {
 
 // Admin
 export const adminApi = {
+  // 크롤링
   triggerCrawl: (target: string) => api.post(`/admin/crawl/${target}`),
   listTasks: () => api.get('/admin/crawl/tasks'),
   getTask: (taskId: number) => api.get(`/admin/crawl/tasks/${taskId}`),
   approveTask: (taskId: number) => api.post(`/admin/crawl/tasks/${taskId}/approve`),
   getData: (type: 'cards' | 'telecom') => api.get(`/admin/data/${type}`),
   deleteData: (type: string, id: number) => api.delete(`/admin/data/${type}/${id}`),
+  // KPI
+  getStats: () => api.get('/admin/stats'),
+  // 사용자
+  listUsers: (params?: { search?: string }) => api.get('/admin/users', { params }),
+  updateUser: (id: number, data: { is_active?: boolean; is_admin?: boolean }) =>
+    api.patch(`/admin/users/${id}`, data),
+  // 알림
+  listAllAlarms: () => api.get('/admin/alarms'),
+  // 로그
+  listLogs: (params?: { action?: string }) => api.get('/admin/logs', { params }),
+}
+
+// Admin types
+export interface AdminStats {
+  users_total: number
+  users_new_7d: number
+  expenses_total: number
+  expenses_this_month: number
+  alarms_active: number
+  cards_count: number
+  telecom_count: number
+  last_crawl_month: string | null
+  logs_today: number
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  username: string
+  is_active: boolean
+  is_admin: boolean
+  created_at: string
+  expense_count: number
+  alarm_count: number
+}
+
+export interface AdminAlarm {
+  id: number
+  title: string
+  alarm_time: string
+  days_of_week: number[]
+  is_active: boolean
+  user_id: number
+  user_email: string
+  username: string
+}
+
+export interface AdminLogEntry {
+  id: string
+  action: string
+  target_type: string | null
+  target_id: number | null
+  detail: Record<string, unknown> | null
+  performed_by_email: string
+  created_at: string
 }
