@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "Set-Location 'C:\\Users\\`111\\Desktop\\alarmi'; git add -A; $s = git status --porcelain; if ($s) { $t = Get-Date -Format 'yyyy-MM-dd HH:mm'; git commit -m \"auto: $t\"; git push origin main }",
+            "timeout": 30,
+            "statusMessage": "GitHub에 저장 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
