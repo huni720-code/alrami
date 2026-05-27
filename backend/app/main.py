@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import Base, engine
-
-Base.metadata.create_all(bind=engine)
+import app.models  # noqa: F401 - 모델 등록
+from app.routers import auth_router, users_router, alarms_router, expenses_router
 
 app = FastAPI(title="알라미 API", version="0.1.0")
 
@@ -14,6 +13,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(alarms_router, prefix="/api")
+app.include_router(expenses_router, prefix="/api")
 
 
 @app.get("/")
