@@ -16,7 +16,14 @@ def _prehash(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(_prehash(plain_password), hashed_password)
+    # 새 방식(SHA-256 사전 해싱) 먼저 시도
+    if pwd_context.verify(_prehash(plain_password), hashed_password):
+        return True
+    # 구형 해시(SHA-256 없이 저장된 경우) 폴백
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 
 def get_password_hash(password: str) -> str:
