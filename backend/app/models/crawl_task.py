@@ -15,6 +15,7 @@ class CrawlTask(Base):
     error_message = Column(Text, nullable=True)
     record_count = Column(Integer, default=0)
     approved = Column(Boolean, default=False)
+    diff_summary = Column(JSON, nullable=True)  # {added, removed, modified} counts after approve
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     completed_at = Column(DateTime, nullable=True)

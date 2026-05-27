@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import { adminApi } from '../../lib/api'
+import { adminApi, type CrawlHistoryEntry, type CrawlDiffSummary } from '../../lib/api'
 
 // ── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -84,11 +84,13 @@ export default function Data() {
   const [approving, setApproving] = useState<Record<string, boolean>>({ cards: false, telecom: false })
   const [savedCards, setSavedCards] = useState<CardRow[]>([])
   const [savedTelecom, setSavedTelecom] = useState<TelecomRow[]>([])
-  const [activeTab, setActiveTab] = useState<'cards' | 'telecom'>('cards')
+  const [activeTab, setActiveTab] = useState<'cards' | 'telecom' | 'history'>('cards')
+  const [crawlHistory, setCrawlHistory] = useState<CrawlHistoryEntry[]>([])
 
   useEffect(() => {
     loadRecentTasks()
     loadSavedData()
+    loadCrawlHistory()
   }, [])
 
   const loadRecentTasks = async () => {
@@ -115,6 +117,13 @@ export default function Data() {
       ])
       setSavedCards(cardsRes.data)
       setSavedTelecom(telecomRes.data)
+    } catch {}
+  }
+
+  const loadCrawlHistory = async () => {
+    try {
+      const { data } = await adminApi.listCrawlHistory()
+      setCrawlHistory(data)
     } catch {}
   }
 
@@ -192,31 +201,37 @@ export default function Data() {
         ))}
       </div>
 
-      {/* 저장된 데이터 */}
+      {/* 저장된 데이터 + 크롤링 이력 */}
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">저장된 데이터</p>
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <div className="flex border-b border-gray-100">
-          {(['cards', 'telecom'] as const).map((tab) => (
+          {(
+            [
+              { key: 'cards', label: `카드 데이터 (${savedCards.length})` },
+              { key: 'telecom', label: `통신 요금제 (${savedTelecom.length})` },
+              { key: 'history', label: `크롤링 이력 (${crawlHistory.length})` },
+            ] as const
+          ).map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab
+                activeTab === tab.key
                   ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/30'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab === 'cards'
-                ? `카드 데이터 (${savedCards.length})`
-                : `통신 요금제 (${savedTelecom.length})`}
+              {tab.label}
             </button>
           ))}
         </div>
         <div className="p-4">
           {activeTab === 'cards' ? (
             <CardsTable cards={savedCards} onDelete={(id) => handleDelete('cards', id)} />
-          ) : (
+          ) : activeTab === 'telecom' ? (
             <TelecomTable plans={savedTelecom} onDelete={(id) => handleDelete('telecom', id)} />
+          ) : (
+            <CrawlHistoryTable history={crawlHistory} onRefresh={loadCrawlHistory} />
           )}
         </div>
       </div>
@@ -504,6 +519,133 @@ function CardsTable({ cards, onDelete }: { cards: CardRow[]; onDelete: (id: numb
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ── 크롤링 이력 테이블 ────────────────────────────────────────────────────────
+
+function CrawlHistoryTable({
+  history,
+  onRefresh,
+}: {
+  history: CrawlHistoryEntry[]
+  onRefresh: () => void
+}) {
+  if (history.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <p className="text-gray-400 text-sm">크롤링 이력이 없습니다.</p>
+        <button
+          onClick={onRefresh}
+          className="mt-3 text-xs text-gray-500 hover:text-gray-700 underline"
+        >
+          새로고침
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={onRefresh}
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+          </svg>
+          새로고침
+        </button>
+      </div>
+      <table className="w-full text-sm">
+        <thead className="text-gray-500 text-xs border-b border-gray-100">
+          <tr>
+            <th className="text-left py-2 px-2">실행 시간</th>
+            <th className="text-left py-2 px-2">대상</th>
+            <th className="text-center py-2 px-2">상태</th>
+            <th className="text-center py-2 px-2">레코드</th>
+            <th className="text-center py-2 px-2">변경사항</th>
+            <th className="text-center py-2 px-2">승인</th>
+            <th className="text-left py-2 px-2">완료 시간</th>
+            <th className="text-left py-2 px-2">실행자</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {history.map((h) => (
+            <tr key={h.id} className="hover:bg-gray-50 transition-colors">
+              <td className="py-2 px-2 text-gray-400 text-xs whitespace-nowrap">
+                {new Date(h.created_at).toLocaleString('ko-KR')}
+              </td>
+              <td className="py-2 px-2">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  h.target === 'cards'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
+                  {h.target === 'cards' ? '카드' : '통신'}
+                </span>
+              </td>
+              <td className="py-2 px-2 text-center">
+                <span className={`text-xs font-medium ${STATUS_COLOR[h.status] || 'text-gray-400'}`}>
+                  {STATUS_LABEL[h.status] || h.status}
+                </span>
+              </td>
+              <td className="py-2 px-2 text-center text-gray-600 text-xs font-medium">
+                {h.record_count != null ? `${h.record_count}건` : '-'}
+              </td>
+              <td className="py-2 px-2 text-center">
+                <DiffBadge diff={h.diff_summary} />
+              </td>
+              <td className="py-2 px-2 text-center">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  h.approved
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : h.status === 'completed'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {h.approved ? '승인됨' : h.status === 'completed' ? '미승인' : '-'}
+                </span>
+              </td>
+              <td className="py-2 px-2 text-gray-400 text-xs whitespace-nowrap">
+                {h.completed_at ? new Date(h.completed_at).toLocaleString('ko-KR') : '-'}
+              </td>
+              <td className="py-2 px-2 text-gray-500 text-xs">{h.created_by_email}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── diff 배지 ─────────────────────────────────────────────────────────────────
+
+function DiffBadge({ diff }: { diff: CrawlDiffSummary | null }) {
+  if (!diff) return <span className="text-xs text-gray-300">-</span>
+  const hasChange = diff.added > 0 || diff.removed > 0 || diff.modified > 0
+  if (!hasChange) {
+    return <span className="text-xs text-gray-400">변경 없음</span>
+  }
+  return (
+    <div className="flex items-center justify-center gap-1 flex-wrap">
+      {diff.added > 0 && (
+        <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+          +{diff.added}
+        </span>
+      )}
+      {diff.removed > 0 && (
+        <span className="text-xs font-medium text-red-500 bg-red-50 px-1.5 py-0.5 rounded">
+          -{diff.removed}
+        </span>
+      )}
+      {diff.modified > 0 && (
+        <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+          ~{diff.modified}
+        </span>
+      )}
     </div>
   )
 }

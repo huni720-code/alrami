@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -15,7 +15,9 @@ from app.models.alarm import Alarm
 from app.models.crawl_task import CrawlTask
 from app.models.expense import Expense
 from app.models.product import Card, CardBenefit, TelecomPlan
+from app.models.saving_benchmark import SavingBenchmark
 from app.models.user import User
+from app.services.benchmark_calculator import calculate_card_benchmarks, calculate_telecom_benchmarks
 
 router = APIRouter(prefix="/admin", tags=["관리자"])
 
@@ -25,6 +27,19 @@ CRAWLER_MAP = {"cards": CardCrawler, "telecom": TelecomCrawler}
 class UserUpdateBody(BaseModel):
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
+
+
+class BenchmarkItem(BaseModel):
+    benchmark_type: str
+    label: str
+    spending_monthly: Optional[int] = None
+    saving_monthly: int
+    saving_annual: int
+    best_strategy: Optional[dict] = None
+
+
+class BenchmarkSaveBody(BaseModel):
+    items: List[BenchmarkItem]
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
@@ -100,8 +115,8 @@ def get_stats(db: Session = Depends(get_db), admin: User = Depends(require_admin
             extract("month", Expense.expense_date) == now.month,
         ).count(),
         "alarms_active": db.query(Alarm).filter(Alarm.is_active == True).count(),
-        "cards_count": db.query(Card).filter(Card.is_active == True).count(),
-        "telecom_count": db.query(TelecomPlan).filter(TelecomPlan.is_active == True).count(),
+        "cards_count": db.query(Card).filter(Card.is_latest == True).count(),
+        "telecom_count": db.query(TelecomPlan).filter(TelecomPlan.is_latest == True).count(),
         "last_crawl_month": (
             last_task.completed_at.strftime("%Y-%m")
             if last_task and last_task.completed_at
@@ -215,7 +230,6 @@ def list_logs(
             user_cache[uid] = u.email if u else "unknown"
         return user_cache[uid]
 
-    # AdminLog 항목
     q = db.query(AdminLog).order_by(AdminLog.created_at.desc())
     if action:
         q = q.filter(AdminLog.action.ilike(f"%{action}%"))
@@ -234,7 +248,6 @@ def list_logs(
         for log in admin_logs
     ]
 
-    # CrawlTask 히스토리
     if not action or "crawl" in action:
         tasks = db.query(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(50).all()
         for t in tasks:
@@ -298,19 +311,42 @@ async def trigger_crawl(
 @router.get("/crawl/tasks")
 def list_tasks(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     tasks = db.query(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(30).all()
+    return [_task_dict(t) for t in tasks]
+
+
+@router.get("/crawl/history")
+def list_crawl_history(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    """전체 크롤링 이력 (최대 200건)."""
+    tasks = db.query(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(200).all()
+    user_cache: dict[int, str] = {}
+
+    def get_email(uid: int) -> str:
+        if uid not in user_cache:
+            u = db.query(User).filter(User.id == uid).first()
+            user_cache[uid] = u.email if u else "unknown"
+        return user_cache[uid]
+
     return [
         {
-            "id": t.id,
-            "target": t.target,
-            "status": t.status,
-            "record_count": t.record_count,
-            "approved": t.approved,
-            "error_message": t.error_message,
-            "created_at": t.created_at.isoformat() if t.created_at else None,
-            "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+            **_task_dict(t),
+            "created_by_email": get_email(t.created_by),
         }
         for t in tasks
     ]
+
+
+def _task_dict(t: CrawlTask) -> dict:
+    return {
+        "id": t.id,
+        "target": t.target,
+        "status": t.status,
+        "record_count": t.record_count,
+        "approved": t.approved,
+        "diff_summary": t.diff_summary,
+        "error_message": t.error_message,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+    }
 
 
 @router.get("/crawl/tasks/{task_id}")
@@ -319,19 +355,12 @@ def get_task(task_id: int, db: Session = Depends(get_db), admin: User = Depends(
     if not task:
         raise HTTPException(status_code=404, detail="태스크를 찾을 수 없습니다.")
     return {
-        "id": task.id,
-        "target": task.target,
-        "status": task.status,
-        "record_count": task.record_count,
-        "approved": task.approved,
-        "error_message": task.error_message,
+        **_task_dict(task),
         "result_json": task.result_json,
-        "created_at": task.created_at.isoformat() if task.created_at else None,
-        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
     }
 
 
-# ── 승인 (결과 → DB 저장) ─────────────────────────────────────────────────────
+# ── 승인 (결과 → DB 저장, 누적 구조) ─────────────────────────────────────────
 
 @router.post("/crawl/tasks/{task_id}/approve")
 def approve_task(
@@ -347,14 +376,26 @@ def approve_task(
     if task.approved:
         raise HTTPException(status_code=409, detail="이미 승인된 태스크입니다.")
 
-    data_month = datetime.now().strftime("%Y-%m")
+    now = datetime.now(timezone.utc)
+    data_month = now.strftime("%Y-%m")
     saved = 0
+    diff_summary: dict = {"added": 0, "removed": 0, "modified": 0}
 
     if task.target == "telecom":
-        db.query(TelecomPlan).filter(TelecomPlan.data_month == data_month).update({"is_active": False})
-        for item in (task.result_json or []):
-            if "error" in item:
-                continue
+        old_plans = db.query(TelecomPlan).filter(TelecomPlan.is_latest == True).all()
+        old_map = {(p.carrier, p.plan_name): p.monthly_fee for p in old_plans}
+
+        new_items = [i for i in (task.result_json or []) if "error" not in i]
+        new_map = {(i.get("carrier", ""), i.get("plan_name", "")): i.get("monthly_fee", 0) for i in new_items}
+
+        diff_summary["added"] = len(set(new_map) - set(old_map))
+        diff_summary["removed"] = len(set(old_map) - set(new_map))
+        diff_summary["modified"] = sum(
+            1 for k in new_map if k in old_map and new_map[k] != old_map[k]
+        )
+
+        db.query(TelecomPlan).filter(TelecomPlan.is_latest == True).update({"is_latest": False})
+        for item in new_items:
             db.add(TelecomPlan(
                 carrier=item.get("carrier", ""),
                 plan_name=item.get("plan_name", ""),
@@ -363,20 +404,34 @@ def approve_task(
                 data_unlimited=item.get("data_unlimited", False),
                 call_type=item.get("call_type", "무제한"),
                 data_month=data_month,
+                is_latest=True,
+                crawled_at=now,
             ))
             saved += 1
 
     elif task.target == "cards":
-        db.query(Card).filter(Card.data_month == data_month).update({"is_active": False})
-        for item in (task.result_json or []):
-            if "error" in item:
-                continue
+        old_cards = db.query(Card).filter(Card.is_latest == True).all()
+        old_map = {(c.name, c.company): c.annual_fee for c in old_cards}
+
+        new_items = [i for i in (task.result_json or []) if "error" not in i]
+        new_map = {(i.get("name", ""), i.get("company", "")): i.get("annual_fee", 0) for i in new_items}
+
+        diff_summary["added"] = len(set(new_map) - set(old_map))
+        diff_summary["removed"] = len(set(old_map) - set(new_map))
+        diff_summary["modified"] = sum(
+            1 for k in new_map if k in old_map and new_map[k] != old_map[k]
+        )
+
+        db.query(Card).filter(Card.is_latest == True).update({"is_latest": False})
+        for item in new_items:
             card = Card(
                 name=item.get("name", ""),
                 company=item.get("company", ""),
                 annual_fee=item.get("annual_fee", 0),
                 card_type=item.get("card_type", "credit"),
                 data_month=data_month,
+                is_latest=True,
+                crawled_at=now,
             )
             db.add(card)
             db.flush()
@@ -393,6 +448,7 @@ def approve_task(
             saved += 1
 
     task.approved = True
+    task.diff_summary = diff_summary
     _log(
         db, "crawl.approve", admin.id,
         target_type="crawl", target_id=task_id,
@@ -408,7 +464,7 @@ def approve_task(
 def get_telecom_data(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     plans = (
         db.query(TelecomPlan)
-        .filter(TelecomPlan.is_active == True)
+        .filter(TelecomPlan.is_latest == True)
         .order_by(TelecomPlan.carrier, TelecomPlan.monthly_fee)
         .all()
     )
@@ -431,7 +487,7 @@ def get_telecom_data(db: Session = Depends(get_db), admin: User = Depends(requir
 def get_cards_data(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     cards = (
         db.query(Card)
-        .filter(Card.is_active == True)
+        .filter(Card.is_latest == True)
         .order_by(Card.company, Card.name)
         .all()
     )
@@ -480,3 +536,61 @@ def delete_data(
     )
     db.delete(item)
     db.commit()
+
+
+# ── 절약 벤치마크 ─────────────────────────────────────────────────────────────
+
+@router.post("/benchmarks/calculate")
+def calculate_benchmarks(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    card_results = calculate_card_benchmarks(db)
+    telecom_results = calculate_telecom_benchmarks(db)
+    return {"card": card_results, "telecom": telecom_results}
+
+
+@router.post("/benchmarks/save")
+def save_benchmarks(
+    body: BenchmarkSaveBody,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    db.query(SavingBenchmark).delete()
+    now = datetime.now(timezone.utc)
+    for item in body.items:
+        db.add(SavingBenchmark(
+            benchmark_type=item.benchmark_type,
+            label=item.label,
+            spending_monthly=item.spending_monthly,
+            saving_monthly=item.saving_monthly,
+            saving_annual=item.saving_annual,
+            best_strategy=item.best_strategy,
+            calculated_at=now,
+        ))
+    db.commit()
+    _log(db, "benchmark.save", admin.id, detail={"count": len(body.items)})
+    db.commit()
+    return {"saved": len(body.items)}
+
+
+@router.get("/benchmarks")
+def get_benchmarks(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    bms = (
+        db.query(SavingBenchmark)
+        .order_by(SavingBenchmark.benchmark_type, SavingBenchmark.spending_monthly)
+        .all()
+    )
+    return [
+        {
+            "id": b.id,
+            "benchmark_type": b.benchmark_type,
+            "label": b.label,
+            "spending_monthly": b.spending_monthly,
+            "saving_monthly": b.saving_monthly,
+            "saving_annual": b.saving_annual,
+            "best_strategy": b.best_strategy,
+            "calculated_at": b.calculated_at.isoformat() if b.calculated_at else None,
+        }
+        for b in bms
+    ]

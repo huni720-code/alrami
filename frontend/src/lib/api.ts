@@ -113,6 +113,7 @@ export const adminApi = {
   listTasks: () => api.get('/admin/crawl/tasks'),
   getTask: (taskId: number) => api.get(`/admin/crawl/tasks/${taskId}`),
   approveTask: (taskId: number) => api.post(`/admin/crawl/tasks/${taskId}/approve`),
+  listCrawlHistory: () => api.get('/admin/crawl/history'),
   getData: (type: 'cards' | 'telecom') => api.get(`/admin/data/${type}`),
   deleteData: (type: string, id: number) => api.delete(`/admin/data/${type}/${id}`),
   // KPI
@@ -125,6 +126,10 @@ export const adminApi = {
   listAllAlarms: () => api.get('/admin/alarms'),
   // 로그
   listLogs: (params?: { action?: string }) => api.get('/admin/logs', { params }),
+  // 벤치마크
+  calculateBenchmarks: () => api.post('/admin/benchmarks/calculate'),
+  saveBenchmarks: (items: BenchmarkItem[]) => api.post('/admin/benchmarks/save', { items }),
+  getBenchmarks: () => api.get('/admin/benchmarks'),
 }
 
 // Admin types
@@ -170,4 +175,37 @@ export interface AdminLogEntry {
   detail: Record<string, unknown> | null
   performed_by_email: string
   created_at: string
+}
+
+export interface CrawlDiffSummary {
+  added: number
+  removed: number
+  modified: number
+}
+
+export interface CrawlHistoryEntry {
+  id: number
+  target: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  record_count: number | null
+  approved: boolean
+  diff_summary: CrawlDiffSummary | null
+  error_message: string | null
+  created_at: string
+  completed_at: string | null
+  created_by_email: string
+}
+
+export interface BenchmarkItem {
+  benchmark_type: 'card' | 'telecom'
+  label: string
+  spending_monthly: number | null
+  saving_monthly: number
+  saving_annual: number
+  best_strategy: Record<string, unknown> | null
+}
+
+export interface SavedBenchmark extends BenchmarkItem {
+  id: number
+  calculated_at: string
 }

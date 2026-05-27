@@ -16,6 +16,8 @@ class Card(Base):
     card_type = Column(String, default="credit")  # credit | debit
     apply_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_latest = Column(Boolean, default=True, nullable=False)
+    crawled_at = Column(DateTime(timezone=True), nullable=True)
     data_month = Column(String, nullable=False)  # "2026-05"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -48,5 +50,7 @@ class TelecomPlan(Base):
     data_unlimited = Column(Boolean, default=False)
     call_type = Column(String, default="무제한")
     is_active = Column(Boolean, default=True, nullable=False)
+    is_latest = Column(Boolean, default=True, nullable=False)
+    crawled_at = Column(DateTime(timezone=True), nullable=True)
     data_month = Column(String, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
