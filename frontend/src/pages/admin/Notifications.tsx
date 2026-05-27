@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminApi, AdminAlarm } from '../../lib/api'
+import { adminApi, type AdminAlarm } from '../../lib/api'
 
 const DAYS = ['월', '화', '수', '목', '금', '토', '일']
 

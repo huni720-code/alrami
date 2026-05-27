@@ -78,65 +78,72 @@ export default function AdminLayout() {
   if (!user?.is_admin) return null
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* 사이드바 */}
-      <aside className="w-[220px] bg-gray-900 text-white flex flex-col flex-shrink-0">
-        {/* 로고 */}
-        <div className="px-5 py-5 border-b border-gray-800">
-          <div className="text-base font-bold text-white">알라미</div>
-          <div className="text-[10px] text-emerald-400 font-semibold tracking-widest mt-0.5 uppercase">
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* 상단 헤더 바 */}
+      <header className="h-12 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0 z-10">
+        <div className="flex items-center gap-3">
+          <span className="text-white font-bold text-sm">알라미</span>
+          <span className="text-[10px] text-emerald-400 font-semibold tracking-widest uppercase">
             Admin Console
-          </div>
+          </span>
         </div>
-
-        {/* 네비게이션 */}
-        <nav className="flex-1 py-4 px-3 overflow-y-auto">
-          {NAV.map((item) => {
-            const active = location.pathname === item.to
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm transition-colors ${
-                  active
-                    ? 'bg-emerald-600 text-white font-medium'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* 사용자 정보 */}
-        <div className="px-4 py-4 border-t border-gray-800">
-          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">관리자</div>
-          <div className="text-sm text-gray-200 font-medium truncate">{user.username}</div>
-          <div className="text-xs text-gray-500 truncate mb-3">{user.email}</div>
-          <div className="flex gap-2">
-            <Link
-              to="/dashboard"
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              서비스로
-            </Link>
-            <span className="text-gray-700">·</span>
-            <button
-              onClick={handleLogout}
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-            >
-              로그아웃
-            </button>
-          </div>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-gray-400">{user.email}</span>
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            서비스로 돌아가기
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+          >
+            로그아웃
+          </button>
         </div>
-      </aside>
+      </header>
 
-      {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-auto">
-        <Outlet />
-      </main>
+      {/* 사이드바 + 콘텐츠 */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 사이드바 */}
+        <aside className="w-[220px] bg-gray-900 text-white flex flex-col flex-shrink-0">
+          {/* 네비게이션 */}
+          <nav className="flex-1 py-4 px-3 overflow-y-auto">
+            {NAV.map((item) => {
+              const active = location.pathname === item.to
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm transition-colors ${
+                    active
+                      ? 'bg-emerald-600 text-white font-medium'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  }`}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* 사용자 정보 */}
+          <div className="px-4 py-4 border-t border-gray-800">
+            <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">관리자</div>
+            <div className="text-sm text-gray-200 font-medium truncate">{user.username}</div>
+          </div>
+        </aside>
+
+        {/* 메인 콘텐츠 */}
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

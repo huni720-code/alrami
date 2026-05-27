@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminApi, AdminStats } from '../../lib/api'
+import { adminApi, type AdminStats } from '../../lib/api'
 
 export default function Engine() {
   const [stats, setStats] = useState<AdminStats | null>(null)

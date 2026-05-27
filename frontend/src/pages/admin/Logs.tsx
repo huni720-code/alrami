@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminApi, AdminLogEntry } from '../../lib/api'
+import { adminApi, type AdminLogEntry } from '../../lib/api'
 
 const ACTION_META: Record<string, { label: string; color: string }> = {
   'crawl.trigger':    { label: '크롤링 시작',      color: 'bg-blue-100 text-blue-700' },

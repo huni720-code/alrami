@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminApi, AdminUser } from '../../lib/api'
+import { adminApi, type AdminUser } from '../../lib/api'
 
 const FILTERS = [
   { key: 'all', label: '전체' },
