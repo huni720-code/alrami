@@ -1,8 +1,10 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { CreditCard } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const NAV = [
   { to: '/dashboard', label: '대시보드' },
+  { to: '/my-cards', label: '카드실적', icon: true },
   { to: '/expenses', label: '지출입력' },
   { to: '/alarms', label: '알람관리' },
   { to: '/sms', label: '문자연동' },
@@ -25,19 +27,21 @@ export default function Navbar() {
           알라미
         </Link>
         <div className="flex items-center gap-4">
-          {NAV.map((n) => (
-            <Link
-              key={n.to}
-              to={n.to}
-              className={`text-sm font-medium transition-colors ${
-                location.pathname.startsWith(n.to)
-                  ? 'text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {n.label}
-            </Link>
-          ))}
+          {NAV.map((n) => {
+            const active = location.pathname.startsWith(n.to)
+            return (
+              <Link
+                key={n.to}
+                to={n.to}
+                className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+                  active ? 'text-[#10b981]' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {n.icon && <CreditCard size={14} />}
+                {n.label}
+              </Link>
+            )
+          })}
           {user?.is_admin && (
             <Link
               to="/admin"

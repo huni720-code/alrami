@@ -19,3 +19,5 @@ class User(Base):
 
     alarms = relationship("Alarm", back_populates="user", cascade="all, delete-orphan")
     expenses = relationship("Expense", back_populates="user", cascade="all, delete-orphan")
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    user_cards = relationship("UserCard", back_populates="user", cascade="all, delete-orphan")

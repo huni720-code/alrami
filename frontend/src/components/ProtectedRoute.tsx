@@ -1,8 +1,9 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -13,5 +14,15 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!user) return <Navigate to="/login" replace />
+
+  // 온보딩 미완료 시 /onboarding/step1 으로 리다이렉트 (/onboarding/* 경로와 어드민 제외)
+  if (
+    !user.is_admin &&
+    !profile?.onboarding_completed &&
+    !location.pathname.startsWith('/onboarding')
+  ) {
+    return <Navigate to="/onboarding/step1" replace />
+  }
+
   return <>{children}</>
 }

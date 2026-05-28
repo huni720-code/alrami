@@ -53,6 +53,32 @@ export const expenseApi = {
   remove: (id: number) => api.delete(`/expenses/${id}`),
 }
 
+// User Profile
+export interface UserProfile {
+  telecom_carrier: string | null
+  telecom_monthly_fee: number | null
+  contract_end_date: string | null
+  card_monthly_total: number | null
+  has_ott: boolean
+  has_rental: boolean
+  onboarding_completed: boolean
+}
+
+export interface UserProfileUpdate {
+  telecom_carrier?: string | null
+  telecom_monthly_fee?: number | null
+  contract_end_date?: string | null
+  card_monthly_total?: number | null
+  has_ott?: boolean
+  has_rental?: boolean
+  onboarding_completed?: boolean
+}
+
+export const userProfileApi = {
+  get: () => api.get<UserProfile>('/users/me/profile'),
+  update: (data: UserProfileUpdate) => api.patch<UserProfile>('/users/me/profile', data),
+}
+
 // Types
 export interface User {
   id: number
@@ -208,4 +234,118 @@ export interface BenchmarkItem {
 export interface SavedBenchmark extends BenchmarkItem {
   id: number
   calculated_at: string
+}
+
+// Recommendation types
+export interface QuickEstimate {
+  input_amount: number
+  card_saving_monthly: number
+  telecom_saving_monthly: number
+  total_saving_monthly: number
+  total_saving_annual: number
+  matched_bracket: string
+}
+
+export interface RecommendedCard {
+  name: string
+  company: string
+  annual_fee: number
+}
+
+export interface CardRecommendation {
+  cards: RecommendedCard[]
+  monthly_benefit: number
+  annual_benefit: number
+}
+
+export interface TelecomRecommendedPlan {
+  carrier: string
+  plan_name: string
+  monthly_fee: number
+}
+
+export interface TelecomRecommendation {
+  current_fee: number
+  recommended_plan: TelecomRecommendedPlan
+  monthly_saving: number
+  annual_saving: number
+}
+
+export interface Portfolio {
+  card_recommendation: CardRecommendation
+  telecom_recommendation: TelecomRecommendation | null
+  total_monthly_saving: number
+  total_annual_saving: number
+}
+
+export const recommendationApi = {
+  quickEstimate: (amount: number) =>
+    api.get<QuickEstimate>('/recommendations/quick-estimate', { params: { amount } }),
+  portfolio: () => api.get<Portfolio>('/recommendations/portfolio'),
+}
+
+export const userApi = {
+  getProfile: () => api.get<UserProfile>('/users/me/profile'),
+  updateProfile: (data: UserProfileUpdate) => api.patch<UserProfile>('/users/me/profile', data),
+}
+
+// MyCards types
+export interface MyCard {
+  id: number
+  card_id: number
+  card_name: string
+  card_company: string
+  nickname: string | null
+  last_4_digits: string | null
+  performance_target: number | null
+  this_month_spent: number
+  remaining: number
+  achieved: boolean
+}
+
+export interface CardCatalogItem {
+  id: number
+  name: string
+  company: string
+  annual_fee: number
+}
+
+export interface SmsParseResult {
+  parsed: {
+    card_company: string
+    amount: number
+    merchant: string | null
+  }
+  matched_card: {
+    card_name: string
+    this_month_spent: number
+    performance_target: number
+    remaining: number
+    achieved: boolean
+  } | null
+  message: string
+}
+
+export interface CardTransaction {
+  id: number
+  user_card_id: number | null
+  card_name: string | null
+  amount: number
+  merchant: string | null
+  transaction_at: string
+}
+
+export const myCardsApi = {
+  list: () => api.get<MyCard[]>('/my-cards'),
+  cardCatalog: () => api.get<CardCatalogItem[]>('/my-cards/card-catalog'),
+  add: (data: {
+    card_id: number
+    nickname?: string
+    last_4_digits?: string
+    performance_target?: number
+  }) => api.post<MyCard>('/my-cards', data),
+  remove: (userCardId: number) => api.delete(`/my-cards/${userCardId}`),
+  parseSms: (raw_sms: string) => api.post<SmsParseResult>('/my-cards/parse-sms', { raw_sms }),
+  transactions: (year: number, month: number) =>
+    api.get<CardTransaction[]>('/my-cards/transactions', { params: { year, month } }),
 }

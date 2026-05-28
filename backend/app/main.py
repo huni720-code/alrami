@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import app.models  # noqa: F401 - 모델 등록
-from app.routers import auth_router, users_router, alarms_router, expenses_router, admin_router
+from app.routers import auth_router, users_router, alarms_router, expenses_router, admin_router, recommendations_router, my_cards_router
+from app.services.alarm_scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="알라미 API", version="0.1.0")
 
@@ -19,6 +20,18 @@ app.include_router(users_router, prefix="/api")
 app.include_router(alarms_router, prefix="/api")
 app.include_router(expenses_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(recommendations_router, prefix="/api")
+app.include_router(my_cards_router, prefix="/api")
+
+
+@app.on_event("startup")
+async def startup_event():
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_scheduler()
 
 
 @app.get("/")
