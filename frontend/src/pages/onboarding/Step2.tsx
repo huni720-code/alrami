@@ -105,7 +105,7 @@ export default function Step2() {
 
         <button
           type="button"
-          onClick={() => navigate('/onboarding/step3')}
+          onClick={() => navigate(user ? '/onboarding/step3' : '/login?from=onboarding')}
           className="w-full bg-[#10b981] text-white py-4 rounded-2xl font-semibold text-base"
         >
           지금 바로 최적화하기

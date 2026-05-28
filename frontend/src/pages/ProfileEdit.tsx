@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { userApi } from '../../lib/api'
-import { useAuth } from '../../context/AuthContext'
+import { userApi } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
+import Layout from '../components/Layout'
 
 const CARRIERS = ['SKT', 'KT', 'LGU+', '알뜰폰'] as const
 const CARRIER_VALUE: Record<string, string> = { 'SKT': 'SKT', 'KT': 'KT', 'LGU+': 'LGU+', '알뜰폰': 'MVNO' }
+const CARRIER_DISPLAY: Record<string, string> = { 'SKT': 'SKT', 'KT': 'KT', 'LGU+': 'LGU+', 'MVNO': '알뜰폰' }
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -22,12 +24,10 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   )
 }
 
-export default function Step3() {
+export default function ProfileEdit() {
   const navigate = useNavigate()
-  const { refreshProfile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
 
-  const [term1, setTerm1] = useState(false)
-  const [term2, setTerm2] = useState(false)
   const [carrier, setCarrier] = useState<string | null>(null)
   const [telecomFee, setTelecomFee] = useState('')
   const [contractEnd, setContractEnd] = useState('')
@@ -35,8 +35,23 @@ export default function Step3() {
   const [hasOtt, setHasOtt] = useState(false)
   const [hasRental, setHasRental] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
 
-  const canSubmit = term1 && term2 && carrier && telecomFee && cardTotal
+  // 기존 값으로 초기화
+  useEffect(() => {
+    if (!profile) return
+    if (profile.telecom_carrier) {
+      const display = CARRIER_DISPLAY[profile.telecom_carrier] ?? profile.telecom_carrier
+      setCarrier(display)
+    }
+    if (profile.telecom_monthly_fee) setTelecomFee(String(profile.telecom_monthly_fee / 10000))
+    if (profile.contract_end_date) setContractEnd(profile.contract_end_date)
+    if (profile.card_monthly_total) setCardTotal(String(profile.card_monthly_total / 10000))
+    setHasOtt(profile.has_ott ?? false)
+    setHasRental(profile.has_rental ?? false)
+  }, [profile])
+
+  const canSubmit = carrier && telecomFee && cardTotal
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -52,48 +67,40 @@ export default function Step3() {
         onboarding_completed: true,
       })
       await refreshProfile()
-      navigate('/onboarding/complete')
+      setDone(true)
+      setTimeout(() => navigate('/dashboard'), 1200)
     } finally {
       setSaving(false)
     }
   }
 
+  if (done) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
+          <div className="text-4xl mb-3">✅</div>
+          <p className="text-lg font-bold text-gray-800">저장됐어요!</p>
+          <p className="text-sm text-gray-500 mt-1">대시보드로 이동합니다...</p>
+        </div>
+      </Layout>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-white px-6 py-10">
-      <div className="w-full max-w-sm mx-auto">
-        {/* 진행률 */}
-        <div className="flex gap-1 mb-8">
-          {[1, 2, 3, 4].map((n) => (
-            <div
-              key={n}
-              className={`h-1 flex-1 rounded-full ${n <= 3 ? 'bg-[#10b981]' : 'bg-gray-200'}`}
-            />
-          ))}
+    <Layout>
+      <div className="max-w-sm mx-auto pb-10">
+        <div className="flex items-center gap-3 mb-6 pt-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ← 뒤로
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">내 정보 수정</h1>
         </div>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-6">내 정보 입력</h2>
-
         <div className="space-y-6">
-          {/* 약관 동의 */}
-          <div className="space-y-2">
-            {[
-              { checked: term1, set: setTerm1, label: '서비스 이용약관 동의 (필수)' },
-              { checked: term2, set: setTerm2, label: '개인정보 수집 및 이용 동의 (필수)' },
-            ].map(({ checked, set, label }) => (
-              <label key={label} className="flex items-center gap-3 cursor-pointer">
-                <div
-                  onClick={() => set(!checked)}
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                    checked ? 'bg-[#10b981] border-[#10b981]' : 'border-gray-300'
-                  }`}
-                >
-                  {checked && <span className="text-white text-xs font-bold">✓</span>}
-                </div>
-                <span className="text-sm text-gray-700">{label}</span>
-              </label>
-            ))}
-          </div>
-
           {/* 통신사 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -186,9 +193,9 @@ export default function Step3() {
           disabled={!canSubmit || saving}
           className="w-full mt-8 bg-[#10b981] disabled:bg-gray-200 text-white disabled:text-gray-400 py-4 rounded-2xl font-semibold text-base transition-colors"
         >
-          {saving ? '저장 중...' : '최적화 결과 보기'}
+          {saving ? '저장 중...' : '저장하기'}
         </button>
       </div>
-    </div>
+    </Layout>
   )
 }

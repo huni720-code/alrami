@@ -85,13 +85,24 @@ export default function Dashboard() {
             </div>
           ) : portfolio ? (
             <div>
-              <p className="text-sm text-gray-500 mb-1">이번달 절약 가능액</p>
-              <p className="text-4xl font-bold text-[#10b981] mb-0.5">
-                {portfolio.total_monthly_saving.toLocaleString()}원
-              </p>
-              <p className="text-xs text-gray-400">
-                연간 {portfolio.total_annual_saving.toLocaleString()}원
-              </p>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">이번달 절약 가능액</p>
+                  <p className="text-4xl font-bold text-[#10b981] mb-0.5">
+                    {portfolio.total_monthly_saving.toLocaleString()}원
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    연간 {portfolio.total_annual_saving.toLocaleString()}원
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/settings')}
+                  className="text-xs text-gray-400 hover:text-[#10b981] border border-gray-200 hover:border-[#10b981] px-2.5 py-1 rounded-lg transition-colors flex-shrink-0 mt-1"
+                >
+                  정보 수정
+                </button>
+              </div>
             </div>
           ) : null}
         </div>

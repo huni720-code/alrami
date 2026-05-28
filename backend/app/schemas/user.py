@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
+from typing import Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class UserCreate(BaseModel):
@@ -42,3 +43,25 @@ class LoginRequest(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserProfileUpdate(BaseModel):
+    telecom_carrier: Optional[str] = None
+    telecom_monthly_fee: Optional[int] = None
+    contract_end_date: Optional[date] = None
+    card_monthly_total: Optional[int] = None
+    has_ott: Optional[bool] = None
+    has_rental: Optional[bool] = None
+    onboarding_completed: Optional[bool] = None
+
+
+class UserProfileResponse(BaseModel):
+    telecom_carrier: Optional[str] = None
+    telecom_monthly_fee: Optional[int] = None
+    contract_end_date: Optional[date] = None
+    card_monthly_total: Optional[int] = None
+    has_ott: bool = False
+    has_rental: bool = False
+    onboarding_completed: bool = False
+
+    model_config = ConfigDict(from_attributes=True)

@@ -1,7 +1,20 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import api from '../lib/api'
+import api, { userApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+
+async function applyPendingProfile() {
+  const raw = sessionStorage.getItem('pending_profile')
+  if (!raw) return false
+  try {
+    const data = JSON.parse(raw)
+    await userApi.updateProfile(data)
+    sessionStorage.removeItem('pending_profile')
+    return true
+  } catch {
+    return false
+  }
+}
 
 export default function OAuthCallback() {
   const [searchParams] = useSearchParams()
@@ -15,6 +28,7 @@ export default function OAuthCallback() {
 
     const provider = searchParams.get('provider')
     const code = searchParams.get('code')
+    const fromOnboarding = searchParams.get('from') === 'onboarding'
     const error = searchParams.get('error')
 
     if (error || !code || !provider) {
@@ -27,7 +41,14 @@ export default function OAuthCallback() {
     api.post<{ access_token: string }>(endpoint, { code })
       .then(async (res) => {
         await login(res.data.access_token)
-        navigate('/dashboard')
+        const hadPending = await applyPendingProfile()
+        if (hadPending) {
+          navigate('/onboarding/complete')
+        } else if (fromOnboarding) {
+          navigate('/onboarding/step3')
+        } else {
+          navigate('/dashboard')
+        }
       })
       .catch(() => {
         navigate('/login')

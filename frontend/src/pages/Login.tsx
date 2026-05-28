@@ -1,13 +1,27 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { authApi } from '../lib/api'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { authApi, userApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
 const KAKAO_CLIENT_ID = import.meta.env.VITE_KAKAO_CLIENT_ID
 const KAKAO_REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const GOOGLE_REDIRECT_URI = import.meta.env.VITE_GOOGLE_REDIRECT_URI
+
+// 로그인 후 pending 프로필 처리 공통 함수
+async function applyPendingProfile() {
+  const raw = sessionStorage.getItem('pending_profile')
+  if (!raw) return false
+  try {
+    const data = JSON.parse(raw)
+    await userApi.updateProfile(data)
+    sessionStorage.removeItem('pending_profile')
+    return true
+  } catch {
+    return false
+  }
+}
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -17,6 +31,19 @@ export default function Login() {
   const [showEmail, setShowEmail] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fromOnboarding = searchParams.get('from') === 'onboarding'
+
+  const afterLogin = async () => {
+    const hadPending = await applyPendingProfile()
+    if (hadPending) {
+      navigate('/onboarding/complete')
+    } else if (fromOnboarding) {
+      navigate('/onboarding/step3')
+    } else {
+      navigate('/dashboard')
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -25,7 +52,7 @@ export default function Login() {
     try {
       const res = await authApi.login({ email, password })
       await login(res.data.access_token)
-      navigate('/dashboard')
+      await afterLogin()
     } catch (err: any) {
       setError(err.response?.data?.detail || '로그인에 실패했습니다.')
     } finally {
@@ -35,13 +62,20 @@ export default function Login() {
 
   const handleKakao = () => {
     if (!KAKAO_CLIENT_ID) return
-    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code`
+    // from=onboarding 정보를 provider 파라미터와 함께 redirect_uri에 포함
+    const redirectUri = fromOnboarding
+      ? `${KAKAO_REDIRECT_URI}?provider=kakao&from=onboarding`
+      : `${KAKAO_REDIRECT_URI}?provider=kakao`
+    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
     window.location.href = url
   }
 
   const handleGoogle = () => {
     if (!GOOGLE_CLIENT_ID) return
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=email+profile`
+    const redirectUri = fromOnboarding
+      ? `${GOOGLE_REDIRECT_URI}?provider=google&from=onboarding`
+      : `${GOOGLE_REDIRECT_URI}?provider=google`
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email+profile`
     window.location.href = url
   }
 
@@ -50,7 +84,14 @@ export default function Login() {
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#10b981] mb-1">알라미</h1>
-          <p className="text-gray-500 text-sm">매달 통신·카드 절약을 자동으로</p>
+          {fromOnboarding ? (
+            <>
+              <p className="text-gray-800 font-semibold text-sm mt-1">거의 다 됐어요!</p>
+              <p className="text-gray-500 text-xs mt-1">계정을 만들면 포트폴리오가 완성돼요</p>
+            </>
+          ) : (
+            <p className="text-gray-500 text-sm">매달 통신·카드 절약을 자동으로</p>
+          )}
         </div>
 
         <div className="space-y-3">
