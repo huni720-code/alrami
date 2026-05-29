@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { dashboardApi, alarmApi } from '../lib/api'
 import type { DashboardKpi, Alarm } from '../lib/api'
@@ -7,6 +7,8 @@ import Layout from '../components/Layout'
 import KpiGrid from '../components/kpi/KpiGrid'
 import CardPerformanceSection from '../components/kpi/CardPerformanceSection'
 import ContractAlertSection from '../components/kpi/ContractAlertSection'
+import SavingsInsightCard from '../components/insight/SavingsInsightCard'
+import { generateInsight } from '../services/savingsInsight'
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-100 rounded-xl ${className}`} />
@@ -41,6 +43,7 @@ export default function Dashboard() {
   const activeAlarms = alarms.filter((a) => a.is_active).slice(0, 3)
   const displayKpi = kpi ?? EMPTY_KPI
   const monthLabel = `${displayKpi.month.year}년 ${displayKpi.month.month}월`
+  const insight = useMemo(() => generateInsight(displayKpi), [displayKpi])
 
   return (
     <Layout>
@@ -103,6 +106,11 @@ export default function Dashboard() {
             contracts={displayKpi.contracts}
             onSettingsClick={() => navigate('/settings')}
           />
+        )}
+
+        {/* ── AI 절약 인사이트 ──────────────────────── */}
+        {!loading && onboardingDone && (
+          <SavingsInsightCard insight={insight} />
         )}
 
         {/* ── 카드 실적 달성률 ──────────────────────── */}
