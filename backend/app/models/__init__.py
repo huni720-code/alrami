@@ -7,9 +7,10 @@ from app.models.admin_log import AdminLog
 from app.models.saving_benchmark import SavingBenchmark
 from app.models.user_profile import UserProfile
 from app.models.user_card import UserCard, CardTransaction
+from app.models.user_consent import UserConsent
 
 __all__ = [
     "User", "Alarm", "Expense", "Card", "CardBenefit", "TelecomPlan",
     "CrawlTask", "AdminLog", "SavingBenchmark", "UserProfile",
-    "UserCard", "CardTransaction",
+    "UserCard", "CardTransaction", "UserConsent",
 ]

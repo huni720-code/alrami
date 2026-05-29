@@ -16,6 +16,7 @@ import Step2 from './pages/onboarding/Step2'
 import Step3 from './pages/onboarding/Step3'
 import Complete from './pages/onboarding/Complete'
 import ProfileEdit from './pages/ProfileEdit'
+import Recommend from './pages/Recommend'
 import Overview from './pages/admin/Overview'
 import Users from './pages/admin/Users'
 import Engine from './pages/admin/Engine'
@@ -57,6 +58,7 @@ export default function App() {
       <Route path="/alarms" element={<ProtectedRoute><AlarmList /></ProtectedRoute>} />
       <Route path="/sms" element={<ProtectedRoute><SmsSettings /></ProtectedRoute>} />
       <Route path="/my-cards" element={<ProtectedRoute><MyCards /></ProtectedRoute>} />
+      <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
 
       {/* 관리자 콘솔 (중첩 라우트) */}
