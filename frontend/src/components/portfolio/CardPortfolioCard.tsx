@@ -16,7 +16,7 @@ export default function CardPortfolioCard({ card }: Props) {
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-4">
-      {/* 헤더: 카드명 + 회사 */}
+      {/* 카드명 + 월 예상 혜택 */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1 min-w-0 mr-3">
           <p className="text-[15px] font-bold text-gray-900 truncate">{name}</p>
@@ -30,35 +30,37 @@ export default function CardPortfolioCard({ card }: Props) {
         </div>
       </div>
 
-      {/* 혜택 카테고리 칩 */}
+      {/* 카테고리별 혜택 상세 (user_category + reason = rate/type 포함) */}
       {matched_categories.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="space-y-1.5 mb-3">
           {matched_categories.map((mc, i) => (
-            <span
-              key={i}
-              className="text-[11px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full"
-            >
-              {mc.reason}
-            </span>
+            <div key={i} className="flex items-start justify-between gap-2">
+              <span className="shrink-0 text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                {mc.user_category}
+              </span>
+              <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-right leading-tight">
+                {mc.reason}
+              </span>
+            </div>
           ))}
         </div>
       )}
 
-      {/* 연회비 + net benefit */}
-      <div className="flex items-center justify-between text-[11px] text-gray-400">
+      {/* 연회비 + 연회비 차감 후 혜택 */}
+      <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-gray-50">
         <span>연회비 {annual_fee > 0 ? fmt(annual_fee) : '없음'}</span>
         {annual_fee > 0 && (
-          <span>연회비 차감 후 월 {fmt(net_monthly_benefit)}</span>
+          <span>차감 후 월 <span className="text-gray-600 font-medium">{fmt(net_monthly_benefit)}</span></span>
         )}
       </div>
 
-      {/* 자세히 보기 링크 */}
+      {/* 자세히 보기 (apply_url 있을 때만, 발급 강요 톤 없음) */}
       {apply_url && (
         <a
           href={apply_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 block w-full text-center text-[13px] font-semibold text-[#10b981] border border-emerald-200 rounded-xl py-2 active:scale-[0.98] transition-all"
+          className="mt-3 block w-full text-center text-[13px] text-[#10b981] border border-emerald-200 rounded-xl py-2 active:scale-[0.98] transition-all"
         >
           자세히 보기 →
         </a>
