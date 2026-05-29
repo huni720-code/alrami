@@ -34,6 +34,7 @@ export default function ProfileEdit() {
   const [carrier, setCarrier] = useState<string | null>(null)
   const [hasOtt, setHasOtt] = useState(false)
   const [hasRental, setHasRental] = useState(false)
+  const [rentalEnd, setRentalEnd] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
@@ -46,6 +47,7 @@ export default function ProfileEdit() {
     if (profile.card_monthly_total) setCardTotal(String(profile.card_monthly_total / 10000))
     setHasOtt(profile.has_ott ?? false)
     setHasRental(profile.has_rental ?? false)
+    if (profile.rental_end_date) setRentalEnd(profile.rental_end_date)
   }, [profile])
 
   const canSubmit = telecomFee.trim() !== '' || cardTotal.trim() !== ''
@@ -61,6 +63,7 @@ export default function ProfileEdit() {
         card_monthly_total: cardTotal ? Math.floor(Number(cardTotal)) * 10000 : null,
         has_ott: hasOtt,
         has_rental: hasRental,
+        rental_end_date: hasRental && rentalEnd ? rentalEnd : null,
         onboarding_completed: true,
       })
       await refreshProfile()
@@ -185,19 +188,39 @@ export default function ProfileEdit() {
                   </div>
                 </div>
 
-                {/* OTT / 렌탈 */}
-                {[
-                  { label: 'OTT 이용 중', sub: '넷플릭스, 디즈니+ 등', on: hasOtt, toggle: () => setHasOtt(!hasOtt) },
-                  { label: '렌탈 이용 중', sub: '정수기, 공기청정기 등', on: hasRental, toggle: () => setHasRental(!hasRental) },
-                ].map(({ label, sub, on, toggle }) => (
-                  <div key={label} className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-4">
-                    <div>
-                      <p className="text-[15px] font-semibold text-gray-800">{label}</p>
-                      <p className="text-[12px] text-gray-400 mt-0.5">{sub}</p>
-                    </div>
-                    <Toggle on={on} onToggle={toggle} />
+                {/* OTT */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-4">
+                  <div>
+                    <p className="text-[15px] font-semibold text-gray-800">OTT 이용 중</p>
+                    <p className="text-[12px] text-gray-400 mt-0.5">넷플릭스, 디즈니+ 등</p>
                   </div>
-                ))}
+                  <Toggle on={hasOtt} onToggle={() => setHasOtt(!hasOtt)} />
+                </div>
+
+                {/* 렌탈 */}
+                <div>
+                  <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-4">
+                    <div>
+                      <p className="text-[15px] font-semibold text-gray-800">렌탈 이용 중</p>
+                      <p className="text-[12px] text-gray-400 mt-0.5">정수기, 공기청정기 등</p>
+                    </div>
+                    <Toggle on={hasRental} onToggle={() => setHasRental(!hasRental)} />
+                  </div>
+                  {hasRental && (
+                    <div className="mt-2 px-1">
+                      <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                        렌탈 계약 종료일
+                        <span className="text-[12px] text-gray-300 font-normal ml-1">(선택)</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={rentalEnd}
+                        onChange={(e) => setRentalEnd(e.target.value)}
+                        className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-[15px] text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

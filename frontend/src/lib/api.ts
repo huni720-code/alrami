@@ -64,6 +64,7 @@ export interface UserProfile {
   card_monthly_total: number | null
   has_ott: boolean
   has_rental: boolean
+  rental_end_date: string | null
   onboarding_completed: boolean
 }
 
@@ -74,6 +75,7 @@ export interface UserProfileUpdate {
   card_monthly_total?: number | null
   has_ott?: boolean
   has_rental?: boolean
+  rental_end_date?: string | null
   onboarding_completed?: boolean
 }
 
