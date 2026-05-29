@@ -142,30 +142,62 @@ export default function Recommend() {
         {/* 카드 추천 */}
         {card && (
           <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">💳</span>
-              <p className="text-[16px] font-bold text-gray-900">추천 카드 조합</p>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💳</span>
+                <p className="text-[16px] font-bold text-gray-900">추천 카드</p>
+              </div>
+              <span className="text-[11px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                {card.data_quality === 'actual' ? '실제 지출 기반' : '소비 패턴 추정'}
+              </span>
             </div>
+            <p className="text-[12px] text-gray-400 mb-4">내 소비 카테고리에 맞는 혜택 카드예요</p>
 
             <div className="space-y-3 mb-4">
-              {card.cards.map((c, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="text-[14px] font-semibold text-gray-800">{c.name}</p>
-                    <p className="text-[12px] text-gray-400">{c.company}</p>
+              {card.cards.map((c) => (
+                <div key={c.card_id} className="border border-gray-100 rounded-xl p-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-[14px] font-semibold text-gray-800">{c.name}</p>
+                      <p className="text-[12px] text-gray-400">
+                        {c.company} · {c.annual_fee === 0 ? '연회비 무료' : `연 ${fmt(c.annual_fee)}원`}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <p className="text-[15px] font-extrabold text-[#10b981] leading-none">
+                        {fmt(c.estimated_monthly_benefit)}원
+                      </p>
+                      <p className="text-[10px] text-gray-400">월 예상 혜택</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[12px] font-medium text-gray-500">
-                      {c.annual_fee === 0 ? '연회비 무료' : `연 ${fmt(c.annual_fee)}원`}
-                    </p>
-                  </div>
+
+                  {c.matched_categories.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {c.matched_categories.slice(0, 3).map((mc, j) => (
+                        <span key={j} className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+                          {mc.reason}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {c.apply_url && (
+                    <a
+                      href={c.apply_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-center text-[12px] text-[#10b981] border border-emerald-200 rounded-lg py-1.5 mt-1"
+                    >
+                      자세히 보기 →
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
 
             <div className="bg-emerald-50 rounded-xl p-3 mb-4">
               <p className="text-[13px] text-[#10b981] font-bold text-center">
-                월 {fmt(card.monthly_benefit)}원 · 연 {fmt(card.annual_benefit)}원 혜택
+                최대 월 {fmt(card.monthly_benefit)}원 · 연 {fmt(card.annual_benefit)}원 혜택
               </p>
             </div>
 
