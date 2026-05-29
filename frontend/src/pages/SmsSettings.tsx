@@ -16,10 +16,13 @@ const SAMPLE_TEXT = `[신한카드] 15,000원 승인 홍길동(1234) 스타벅�
 // ── 카테고리 색상 ─────────────────────────────────────────────
 const CAT_COLOR: Record<string, string> = {
   '식비':       'bg-orange-100 text-orange-700',
+  '카페':       'bg-amber-100  text-amber-700',
   '교통':       'bg-blue-100   text-blue-700',
+  '주유':       'bg-yellow-100 text-yellow-700',
   '쇼핑':       'bg-pink-100   text-pink-700',
   '의료':       'bg-red-100    text-red-700',
   '문화/여가':  'bg-purple-100 text-purple-700',
+  '구독':       'bg-violet-100 text-violet-700',
   '주거/통신':  'bg-teal-100   text-teal-700',
   '교육':       'bg-indigo-100 text-indigo-700',
   '금융':       'bg-gray-200   text-gray-700',

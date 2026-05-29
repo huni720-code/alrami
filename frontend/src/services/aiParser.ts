@@ -18,60 +18,8 @@
  *   → 날짜/가맹점/금액/카테고리 JSON 추출
  */
 
-import type { ExpenseCategory, ImportParseResult, ParsedExpense } from '../types/expenseImport'
-
-// ── 카테고리 자동 분류 ─────────────────────────────────────────
-const CATEGORY_MAP: Array<[string[], ExpenseCategory]> = [
-  [
-    [
-      '스타벅스', '맥도날드', '버거킹', '롯데리아', '이마트', '홈플러스', '롯데마트',
-      '편의점', 'GS25', 'CU', '세븐일레븐', 'MINI스톱', '배달의민족', '쿠팡이츠',
-      '요기요', '배민', '카페', '식당', '커피', '빵', '베이커리', '치킨', '피자',
-      '라멘', '파스타', '도시락', '마트', '슈퍼',
-    ],
-    '식비',
-  ],
-  [
-    [
-      '택시', '카카오T', 'KTX', 'SRT', '지하철', 'T-money', '버스', '주유',
-      'GS칼텍스', 'SK에너지', 'S-OIL', '현대오일', '자동차', '주차', '톨',
-    ],
-    '교통',
-  ],
-  [
-    [
-      '쿠팡', '11번가', 'G마켓', '옥션', '무신사', '올리브영', '다이소', '이케아',
-      'IKEA', '신세계', '현대백화점', '롯데백화점', 'H&M', 'ZARA', '유니클로',
-      '아디다스', '나이키',
-    ],
-    '쇼핑',
-  ],
-  [['병원', '의원', '약국', '치과', '한의원', '피부과', '내과', '외과', '의료', '건강'], '의료'],
-  [
-    [
-      'CGV', '롯데시네마', '메가박스', '넷플릭스', '유튜브', '스포티파이',
-      '게임', '공연', '전시', '영화', '헬스', '스크린', '볼링',
-    ],
-    '문화/여가',
-  ],
-  [
-    [
-      'SKT', 'KT', 'LGU', '통신', '인터넷', '렌탈', '관리비', '전기', '가스',
-      '수도', '월세', '전세', '보험',
-    ],
-    '주거/통신',
-  ],
-  [['학원', '교육', '학습', '인터넷강의', '책', '도서', '문구'], '교육'],
-  [['은행', '이체', '보험료', '증권', '투자', '금융', '납부', '수수료'], '금융'],
-]
-
-function guessCategory(merchant: string): ExpenseCategory {
-  const lower = merchant.toLowerCase()
-  for (const [keywords, cat] of CATEGORY_MAP) {
-    if (keywords.some((k) => lower.includes(k.toLowerCase()))) return cat
-  }
-  return '기타'
-}
+import type { ImportParseResult, ParsedExpense } from '../types/expenseImport'
+import { classifyCategory } from './categoryClassifier'
 
 // ── 날짜 추출 ─────────────────────────────────────────────────
 function extractDate(line: string): string {
@@ -175,7 +123,7 @@ export function parseLine(line: string): ParsedExpense | null {
   const date = extractDate(trimmed)
   const card_company = extractCardCompany(trimmed)
   const merchant = extractMerchant(trimmed, amount)
-  const category = guessCategory(merchant)
+  const category = classifyCategory(merchant)
   const description = card_company ? `${card_company} ${merchant}` : merchant
 
   return {

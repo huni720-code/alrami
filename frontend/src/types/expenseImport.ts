@@ -1,5 +1,5 @@
 export const EXPENSE_CATEGORIES = [
-  '식비', '교통', '쇼핑', '의료', '문화/여가', '주거/통신', '교육', '금융', '기타',
+  '식비', '카페', '교통', '주유', '쇼핑', '의료', '문화/여가', '구독', '주거/통신', '교육', '금융', '기타',
 ] as const
 
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]

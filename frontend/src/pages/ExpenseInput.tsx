@@ -3,8 +3,8 @@ import type { FormEvent } from 'react'
 import { expenseApi } from '../lib/api'
 import type { Expense } from '../lib/api'
 import Layout from '../components/Layout'
-
-const CATEGORIES = ['식비', '교통', '쇼핑', '의료', '문화/여가', '주거/통신', '교육', '금융', '기타']
+import { EXPENSE_CATEGORIES } from '../types/expenseImport'
+import { classifyCategory } from '../services/categoryClassifier'
 
 function formatAmount(amount: string | number) {
   return Number(amount).toLocaleString('ko-KR') + '원'
@@ -19,7 +19,7 @@ export default function ExpenseInput() {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({
     amount: '',
-    category: '식비',
+    category: '기타' as string,
     description: '',
     expense_date: new Date().toISOString().slice(0, 10),
   })
@@ -121,9 +121,14 @@ export default function ExpenseInput() {
             </div>
 
             <div>
-              <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">어디서 썼어요?</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[13px] font-semibold text-gray-500">카테고리</label>
+                {form.description && (
+                  <span className="text-[11px] text-[#10b981]">자동 분류됨 · 수정 가능</span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((c) => (
+                {EXPENSE_CATEGORIES.map((c) => (
                   <button
                     key={c}
                     type="button"
@@ -152,12 +157,15 @@ export default function ExpenseInput() {
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">메모 (선택)</label>
+                <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">가맹점 / 메모</label>
                 <input
                   type="text"
                   value={form.description}
-                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  placeholder="메모"
+                  onChange={(e) => {
+                    const desc = e.target.value
+                    setForm((p) => ({ ...p, description: desc, category: classifyCategory(desc) }))
+                  }}
+                  placeholder="스타벅스, 쿠팡..."
                   className="w-full bg-gray-50 rounded-xl px-3 py-2.5 text-[14px] text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
                 />
               </div>
