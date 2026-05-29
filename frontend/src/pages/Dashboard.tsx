@@ -136,7 +136,6 @@ export default function Dashboard() {
         {/* ── 카드 사용 전략 ────────────────────────── */}
         {!loading && onboardingDone && (
           <CardPortfolioSection
-            cards={displayKpi.card_performance}
             onAddCard={() => navigate('/my-cards')}
           />
         )}

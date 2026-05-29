@@ -1,47 +1,65 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { KpiCardPerf } from '../../types/kpi'
-import { buildPortfolioStrategy } from '../../services/cardPortfolioService'
+import type { CardPortfolioRecommendation } from '../../types/cardPortfolio'
+import { fetchPortfolioRecommendation } from '../../services/cardPortfolioService'
 import CardPortfolioCard from './CardPortfolioCard'
 
 const MAX_VISIBLE = 2
 
 interface Props {
-  cards: KpiCardPerf[]
   onAddCard: () => void
 }
 
-export default function CardPortfolioSection({ cards, onAddCard }: Props) {
+export default function CardPortfolioSection({ onAddCard }: Props) {
   const navigate = useNavigate()
+  const [data, setData] = useState<CardPortfolioRecommendation | null>(null)
+  const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
 
-  if (cards.length === 0) {
+  useEffect(() => {
+    fetchPortfolioRecommendation()
+      .then(setData)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
     return (
       <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-        <p className="text-[15px] font-bold text-gray-900 mb-1">이번 달 카드 사용 전략</p>
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-gray-100 rounded w-1/2" />
+          <div className="h-20 bg-gray-100 rounded-xl" />
+          <div className="h-20 bg-gray-100 rounded-xl" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!data || data.cards.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <p className="text-[15px] font-bold text-gray-900 mb-1">내 소비 맞춤 카드 추천</p>
         <p className="text-[13px] text-gray-400 mb-3">
-          카드를 등록하면 실적 기반 맞춤 사용 전략을 안내해드려요
+          카드 혜택 데이터를 불러올 수 없습니다
         </p>
         <button
           type="button"
           onClick={onAddCard}
           className="w-full bg-emerald-50 text-[#10b981] py-3 rounded-xl text-[14px] font-semibold active:scale-[0.98] transition-all"
         >
-          카드 등록하기 →
+          내 카드 관리 →
         </button>
       </div>
     )
   }
 
-  const { strategies, summary } = buildPortfolioStrategy(cards)
-  const visible = expanded ? strategies : strategies.slice(0, MAX_VISIBLE)
-  const hasMore = strategies.length > MAX_VISIBLE
+  const visible = expanded ? data.cards : data.cards.slice(0, MAX_VISIBLE)
+  const hasMore = data.cards.length > MAX_VISIBLE
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[15px] font-bold text-gray-900">이번 달 카드 사용 전략</p>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[15px] font-bold text-gray-900">내 소비 맞춤 카드 추천</p>
         <button
           type="button"
           onClick={() => navigate('/my-cards')}
@@ -51,15 +69,19 @@ export default function CardPortfolioSection({ cards, onAddCard }: Props) {
         </button>
       </div>
 
-      {/* 요약 */}
-      {summary && (
-        <p className="text-[13px] text-gray-500 mb-4 leading-relaxed">{summary}</p>
-      )}
+      {/* 데이터 품질 뱃지 */}
+      <p className="text-[11px] text-gray-400 mb-4">
+        {data.data_quality === 'actual' ? '이번 달 실제 지출 기반' : '소비 패턴 추정 기반'} ·{' '}
+        월 최대 예상 혜택{' '}
+        <span className="text-[#10b981] font-semibold">
+          {data.monthly_benefit.toLocaleString('ko-KR')}원
+        </span>
+      </p>
 
       {/* 카드 목록 */}
       <div className="space-y-3">
-        {visible.map((strategy) => (
-          <CardPortfolioCard key={strategy.card_id} strategy={strategy} />
+        {visible.map((card) => (
+          <CardPortfolioCard key={card.card_id} card={card} />
         ))}
       </div>
 
@@ -72,11 +94,13 @@ export default function CardPortfolioSection({ cards, onAddCard }: Props) {
         >
           {expanded
             ? '접기 ▲'
-            : `나머지 ${strategies.length - MAX_VISIBLE}개 카드 전략 보기 ▼`}
+            : `나머지 ${data.cards.length - MAX_VISIBLE}개 카드 더 보기 ▼`}
         </button>
       )}
 
-      <p className="text-[10px] text-gray-300 mt-3 text-right">카드 특화 혜택은 카드사 앱에서 확인하세요</p>
+      <p className="text-[10px] text-gray-300 mt-3 text-right">
+        예상 혜택은 실제와 다를 수 있습니다
+      </p>
     </div>
   )
 }
