@@ -112,7 +112,7 @@ export default function Dashboard() {
           <CardPerformanceSection
             cards={displayKpi.card_performance}
             summary={displayKpi.card_performance_summary}
-            onSmsClick={() => navigate('/my-cards')}
+            onSmsClick={() => navigate('/sms')}
           />
         ) : onboardingDone ? (
           <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">

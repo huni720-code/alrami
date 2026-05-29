@@ -1,127 +1,367 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
+import { expenseApi } from '../lib/api'
+import { parseText } from '../services/aiParser'
+import { EXPENSE_CATEGORIES } from '../types/expenseImport'
+import type { ExpenseCategory, ParsedExpense } from '../types/expenseImport'
 
+// ── 샘플 데이터 ───────────────────────────────────────────────
+const SAMPLE_TEXT = `[신한카드] 15,000원 승인 홍길동(1234) 스타벅스
+[삼성카드] 1234 45,800원 승인 (이마트)
+05/28 카카오택시 12,800원
+2026-05-27 올리브영 32,500원
+롯데시네마 14,000원 05/26`
+
+// ── 카테고리 색상 ─────────────────────────────────────────────
+const CAT_COLOR: Record<string, string> = {
+  '식비':       'bg-orange-100 text-orange-700',
+  '교통':       'bg-blue-100   text-blue-700',
+  '쇼핑':       'bg-pink-100   text-pink-700',
+  '의료':       'bg-red-100    text-red-700',
+  '문화/여가':  'bg-purple-100 text-purple-700',
+  '주거/통신':  'bg-teal-100   text-teal-700',
+  '교육':       'bg-indigo-100 text-indigo-700',
+  '금융':       'bg-gray-200   text-gray-700',
+  '기타':       'bg-gray-100   text-gray-500',
+}
+
+// ── 진행 단계 ─────────────────────────────────────────────────
+type Step = 'input' | 'review' | 'done'
+
+// ── 입력 화면 ─────────────────────────────────────────────────
+function InputStep({
+  rawText,
+  onChange,
+  onAnalyze,
+}: {
+  rawText: string
+  onChange: (v: string) => void
+  onAnalyze: () => void
+}) {
+  const navigate = useNavigate()
+  return (
+    <div className="max-w-sm mx-auto pb-10">
+      <div className="flex items-center gap-3 pt-2 mb-5">
+        <button type="button" onClick={() => navigate(-1)} className="text-gray-400 text-[15px]">←</button>
+        <h1 className="text-[22px] font-extrabold text-gray-900">내역 가져오기</h1>
+      </div>
+
+      <p className="text-[14px] text-gray-500 mb-4 leading-relaxed">
+        카드 승인 문자나 은행 사용 내역을 붙여넣으면<br />
+        날짜·가맹점·금액·카테고리를 자동으로 추출해요
+      </p>
+
+      <textarea
+        value={rawText}
+        onChange={(e) => onChange(e.target.value)}
+        rows={9}
+        autoFocus
+        className="w-full bg-gray-50 rounded-2xl p-4 text-[14px] text-gray-800 placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-[#10b981] resize-none leading-relaxed"
+        placeholder={`여기에 붙여넣으세요\n\n예시:\n${SAMPLE_TEXT}`}
+      />
+
+      <button
+        type="button"
+        onClick={onAnalyze}
+        disabled={!rawText.trim()}
+        className="w-full mt-4 bg-[#10b981] disabled:bg-gray-100 text-white disabled:text-gray-300
+          py-[18px] rounded-2xl text-[17px] font-bold transition-all active:scale-[0.98]"
+      >
+        분석하기 →
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange(SAMPLE_TEXT)}
+        className="w-full mt-3 text-[13px] text-gray-400 py-2"
+      >
+        예시 데이터로 테스트해보기
+      </button>
+    </div>
+  )
+}
+
+// ── 항목 카드 (수정 가능) ─────────────────────────────────────
+function ItemCard({
+  item,
+  onUpdate,
+  onRemove,
+}: {
+  item: ParsedExpense
+  onUpdate: (patch: Partial<ParsedExpense>) => void
+  onRemove: () => void
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm">
+      {/* 가맹점 + 금액 + 삭제 */}
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          type="text"
+          value={item.merchant}
+          onChange={(e) => onUpdate({ merchant: e.target.value, description: e.target.value })}
+          className="flex-1 min-w-0 text-[16px] font-bold text-gray-900 bg-transparent
+            outline-none border-b border-transparent focus:border-gray-200 truncate"
+        />
+        <div className="flex items-center gap-0.5 shrink-0">
+          <input
+            type="number"
+            value={item.amount}
+            onChange={(e) => onUpdate({ amount: Math.max(0, Number(e.target.value)) })}
+            className="w-[84px] text-[15px] font-semibold text-[#10b981] text-right
+              bg-transparent outline-none"
+          />
+          <span className="text-[13px] text-gray-400">원</span>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 text-gray-300 hover:text-red-400 transition-colors text-[18px] leading-none px-1"
+        >
+          ×
+        </button>
+      </div>
+
+      {/* 날짜 + 카테고리 + 카드사 */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          type="date"
+          value={item.date}
+          onChange={(e) => onUpdate({ date: e.target.value })}
+          className="text-[12px] text-gray-500 bg-gray-50 rounded-lg px-2 py-1 outline-none
+            focus:ring-1 focus:ring-[#10b981]"
+        />
+        <select
+          value={item.category}
+          onChange={(e) => onUpdate({ category: e.target.value as ExpenseCategory })}
+          className={`text-[12px] font-medium rounded-lg px-2 py-1 outline-none cursor-pointer
+            ${CAT_COLOR[item.category] ?? 'bg-gray-100 text-gray-500'}`}
+        >
+          {EXPENSE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        {item.card_company && (
+          <span className="text-[11px] text-gray-300 ml-auto truncate max-w-[90px]">
+            {item.card_company}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── 검토/수정 화면 ────────────────────────────────────────────
+function ReviewStep({
+  items,
+  failedLines,
+  saving,
+  onUpdate,
+  onRemove,
+  onBack,
+  onSave,
+}: {
+  items: ParsedExpense[]
+  failedLines: string[]
+  saving: boolean
+  onUpdate: (id: string, patch: Partial<ParsedExpense>) => void
+  onRemove: (id: string) => void
+  onBack: () => void
+  onSave: () => void
+}) {
+  const [showFailed, setShowFailed] = useState(false)
+
+  return (
+    <div className="max-w-sm mx-auto pb-10">
+      {/* 헤더 */}
+      <div className="flex items-center gap-3 pt-2 mb-5">
+        <button type="button" onClick={onBack} className="text-gray-400 text-[15px]">←</button>
+        <div>
+          <h1 className="text-[20px] font-extrabold text-gray-900">
+            {items.length}건 분석됨
+          </h1>
+          {failedLines.length > 0 && (
+            <p className="text-[12px] text-gray-400">
+              {failedLines.length}줄 인식 실패
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 안내 */}
+      {items.length > 0 && (
+        <p className="text-[12px] text-gray-400 mb-3 px-1">
+          가맹점명·금액·날짜·카테고리를 직접 수정할 수 있어요
+        </p>
+      )}
+
+      {/* 항목 목록 */}
+      {items.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-[16px] text-gray-400 mb-1">인식된 내역이 없어요</p>
+          <p className="text-[13px] text-gray-300">금액이 포함된 줄을 입력해주세요</p>
+        </div>
+      ) : (
+        <div className="space-y-3 mb-4">
+          {items.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              onUpdate={(patch) => onUpdate(item.id, patch)}
+              onRemove={() => onRemove(item.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* 인식 실패 줄 */}
+      {failedLines.length > 0 && (
+        <div className="mb-5">
+          <button
+            type="button"
+            onClick={() => setShowFailed(!showFailed)}
+            className="flex items-center gap-1.5 text-[13px] text-gray-400"
+          >
+            <span className="text-orange-400">⚠</span>
+            <span>인식 실패 {failedLines.length}줄</span>
+            <span className="text-[11px]">{showFailed ? '▲' : '▼'}</span>
+          </button>
+          {showFailed && (
+            <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-1.5">
+              {failedLines.map((l, i) => (
+                <p key={i} className="text-[12px] text-gray-400 line-through">{l}</p>
+              ))}
+              <p className="text-[11px] text-gray-300 pt-1">
+                금액이 포함되지 않은 줄은 건너뜁니다
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 저장 버튼 */}
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={items.length === 0 || saving}
+        className="w-full bg-[#10b981] disabled:bg-gray-100 text-white disabled:text-gray-300
+          py-[18px] rounded-2xl text-[17px] font-bold transition-all active:scale-[0.98]"
+      >
+        {saving ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            저장 중...
+          </span>
+        ) : (
+          `지출로 저장하기 (${items.length}건)`
+        )}
+      </button>
+    </div>
+  )
+}
+
+// ── 완료 화면 ─────────────────────────────────────────────────
+function DoneStep({ count, onReset }: { count: number; onReset: () => void }) {
+  const navigate = useNavigate()
+  return (
+    <div className="max-w-sm mx-auto min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+      <div className="text-[52px] mb-3">✅</div>
+      <p className="text-[22px] font-extrabold text-gray-900 mb-1">저장 완료!</p>
+      <p className="text-[14px] text-gray-400 mb-8">
+        {count}건의 지출이 기록됐어요
+      </p>
+      <div className="flex gap-3 w-full">
+        <button
+          type="button"
+          onClick={onReset}
+          className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-2xl text-[15px] font-semibold"
+        >
+          더 입력하기
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="flex-1 bg-[#10b981] text-white py-3.5 rounded-2xl text-[15px] font-semibold"
+        >
+          대시보드 →
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── 메인 컴포넌트 ─────────────────────────────────────────────
 export default function SmsSettings() {
-  const [phone, setPhone] = useState(localStorage.getItem('sms_phone') || '')
-  const [saved, setSaved] = useState(false)
-  const [testSent, setTestSent] = useState(false)
-  const [monthlyBudget, setMonthlyBudget] = useState(
-    localStorage.getItem('monthly_budget') || ''
-  )
-  const [alertEnabled, setAlertEnabled] = useState(
-    localStorage.getItem('sms_alert_enabled') === 'true'
-  )
+  const [step, setStep] = useState<Step>('input')
+  const [rawText, setRawText] = useState('')
+  const [items, setItems] = useState<ParsedExpense[]>([])
+  const [failedLines, setFailedLines] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+  const [savedCount, setSavedCount] = useState(0)
 
-  const handleSavePhone = () => {
-    localStorage.setItem('sms_phone', phone)
-    localStorage.setItem('monthly_budget', monthlyBudget)
-    localStorage.setItem('sms_alert_enabled', String(alertEnabled))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleAnalyze = () => {
+    const result = parseText(rawText)
+    setItems(result.items)
+    setFailedLines(result.failed_lines)
+    setStep('review')
   }
 
-  const handleTestSms = () => {
-    setTestSent(true)
-    setTimeout(() => setTestSent(false), 3000)
+  const updateItem = (id: string, patch: Partial<ParsedExpense>) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  }
+
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    let count = 0
+    for (const item of items) {
+      try {
+        await expenseApi.create({
+          amount: item.amount,
+          category: item.category,
+          description: item.description,
+          expense_date: `${item.date}T00:00:00`,
+        })
+        count++
+      } catch {
+        // 개별 실패는 건너뜀
+      }
+    }
+    setSavedCount(count)
+    setStep('done')
+    setSaving(false)
+  }
+
+  const handleReset = () => {
+    setStep('input')
+    setRawText('')
+    setItems([])
+    setFailedLines([])
+    setSavedCount(0)
   }
 
   return (
     <Layout>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">문자 연동 설정</h2>
-
-      <div className="space-y-6">
-        {/* 전화번호 설정 */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="font-semibold text-gray-700 mb-4">알림 수신 번호</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                휴대폰 번호
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="010-0000-0000"
-                />
-                <button
-                  onClick={handleTestSms}
-                  disabled={!phone}
-                  className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                  테스트 발송
-                </button>
-              </div>
-              {testSent && (
-                <p className="text-green-600 text-sm mt-2">
-                  테스트 문자가 발송되었습니다. (실제 연동 시 Twilio/알리고 등 연결 필요)
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 예산 알림 설정 */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="font-semibold text-gray-700 mb-4">예산 초과 알림</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">예산 초과 시 문자 알림</p>
-                <p className="text-xs text-gray-500">월 예산 초과 시 자동으로 문자를 발송합니다.</p>
-              </div>
-              <button
-                onClick={() => setAlertEnabled((v) => !v)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  alertEnabled ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    alertEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                월 예산 한도 (원)
-              </label>
-              <input
-                type="number"
-                value={monthlyBudget}
-                onChange={(e) => setMonthlyBudget(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="예: 500000"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 문자 연동 안내 */}
-        <div className="bg-blue-50 rounded-xl border border-blue-100 p-6">
-          <h3 className="font-semibold text-blue-700 mb-3">문자 연동 방법 안내</h3>
-          <div className="space-y-2 text-sm text-blue-600">
-            <p><span className="font-medium">1. Twilio (글로벌)</span> — 국제 SMS 서비스. 계정 등록 후 API Key 입력.</p>
-            <p><span className="font-medium">2. 알리고 (국내)</span> — 국내 문자 서비스. 저렴한 단가. API Key 입력 후 즉시 연동.</p>
-            <p><span className="font-medium">3. CoolSMS (국내)</span> — 국내 최대 문자 서비스. 카카오 알림톡 연동 가능.</p>
-          </div>
-          <p className="text-xs text-blue-400 mt-3">
-            실제 문자 발송을 위해 백엔드에 SMS API 키를 환경변수로 설정하고 발송 로직을 연결하세요.
-          </p>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={handleSavePhone}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-lg transition-colors"
-          >
-            {saved ? '저장완료!' : '설정 저장'}
-          </button>
-        </div>
-      </div>
+      {step === 'input' && (
+        <InputStep rawText={rawText} onChange={setRawText} onAnalyze={handleAnalyze} />
+      )}
+      {step === 'review' && (
+        <ReviewStep
+          items={items}
+          failedLines={failedLines}
+          saving={saving}
+          onUpdate={updateItem}
+          onRemove={removeItem}
+          onBack={() => setStep('input')}
+          onSave={handleSave}
+        />
+      )}
+      {step === 'done' && (
+        <DoneStep count={savedCount} onReset={handleReset} />
+      )}
     </Layout>
   )
 }
