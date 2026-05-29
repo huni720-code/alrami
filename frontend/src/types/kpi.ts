@@ -37,6 +37,8 @@ export interface KpiContract {
   end_date: string
   days_left: number
   urgent: boolean
+  carrier: string | null
+  monthly_fee: number | null
 }
 
 export interface DashboardKpi {

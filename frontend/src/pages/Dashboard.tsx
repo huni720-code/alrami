@@ -104,6 +104,7 @@ export default function Dashboard() {
         {!loading && (
           <ContractAlertSection
             contracts={displayKpi.contracts}
+            estimatedSaving={displayKpi.saving.recommended_monthly}
             onSettingsClick={() => navigate('/settings')}
           />
         )}

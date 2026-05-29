@@ -124,21 +124,26 @@ def get_kpi(
     if profile:
         if profile.contract_end_date:
             days_left = (profile.contract_end_date - today).days
+            carrier = profile.telecom_carrier
             contracts.append({
                 "type": "telecom",
-                "label": "통신 약정 종료",
+                "label": f"{carrier} 통신 약정" if carrier else "통신 약정",
                 "end_date": profile.contract_end_date.isoformat(),
                 "days_left": days_left,
                 "urgent": days_left <= 30,
+                "carrier": carrier,
+                "monthly_fee": profile.telecom_monthly_fee,
             })
         if profile.rental_end_date:
             days_left = (profile.rental_end_date - today).days
             contracts.append({
                 "type": "rental",
-                "label": "렌탈 계약 종료",
+                "label": "렌탈 계약",
                 "end_date": profile.rental_end_date.isoformat(),
                 "days_left": days_left,
                 "urgent": days_left <= 30,
+                "carrier": None,
+                "monthly_fee": None,
             })
 
     return {
