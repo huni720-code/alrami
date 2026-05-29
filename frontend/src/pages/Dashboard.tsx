@@ -112,7 +112,25 @@ export default function Dashboard() {
 
         {/* ── AI 절약 인사이트 ──────────────────────── */}
         {!loading && onboardingDone && (
-          <SavingsInsightCard insight={insight} />
+          <>
+            <SavingsInsightCard insight={insight} />
+            <button
+              type="button"
+              onClick={() => navigate('/coach')}
+              className="w-full mb-4 flex items-center justify-between bg-white rounded-2xl px-5 py-3.5 shadow-sm active:scale-[0.98] transition-all border border-gray-100"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <span className="text-[#10b981] text-[13px] font-bold">알</span>
+                </div>
+                <div className="text-left">
+                  <p className="text-[14px] font-semibold text-gray-800">절약 코치와 대화하기</p>
+                  <p className="text-[11px] text-gray-400">카드·통신·렌탈 절약 질문</p>
+                </div>
+              </div>
+              <span className="text-[13px] text-[#10b981] font-medium">→</span>
+            </button>
+          </>
         )}
 
         {/* ── 카드 사용 전략 ────────────────────────── */}
