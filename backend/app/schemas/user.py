@@ -52,6 +52,7 @@ class UserProfileUpdate(BaseModel):
     card_monthly_total: Optional[int] = None
     has_ott: Optional[bool] = None
     has_rental: Optional[bool] = None
+    rental_end_date: Optional[date] = None
     onboarding_completed: Optional[bool] = None
 
 
@@ -62,6 +63,7 @@ class UserProfileResponse(BaseModel):
     card_monthly_total: Optional[int] = None
     has_ott: bool = False
     has_rental: bool = False
+    rental_end_date: Optional[date] = None
     onboarding_completed: bool = False
 
     model_config = ConfigDict(from_attributes=True)

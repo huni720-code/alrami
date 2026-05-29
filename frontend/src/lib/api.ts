@@ -1,4 +1,7 @@
 import axios from 'axios'
+import type { DashboardKpi } from '../types/kpi'
+
+export type { DashboardKpi }
 
 const api = axios.create({
   baseURL: '/api',
@@ -333,6 +336,10 @@ export interface CardTransaction {
   amount: number
   merchant: string | null
   transaction_at: string
+}
+
+export const dashboardApi = {
+  kpi: () => api.get<DashboardKpi>('/dashboard/kpi'),
 }
 
 export const myCardsApi = {

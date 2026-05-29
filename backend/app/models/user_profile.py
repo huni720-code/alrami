@@ -17,6 +17,7 @@ class UserProfile(Base):
     card_monthly_total = Column(Integer, nullable=True)
     has_ott = Column(Boolean, default=False)
     has_rental = Column(Boolean, default=False)
+    rental_end_date = Column(Date, nullable=True)
     onboarding_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
