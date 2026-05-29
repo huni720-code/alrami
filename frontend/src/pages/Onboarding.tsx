@@ -1,303 +1,323 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { userProfileApi } from '../lib/api'
+import { userProfileApi, recommendationApi } from '../lib/api'
+import type { QuickEstimate } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
-const CARRIERS = ['SKT', 'KT', 'LGU+', 'MVNO']
-const CARD_PRESETS = [300000, 500000, 1000000, 1500000, 2000000]
-const STEPS = ['통신사 정보', '카드 사용', '부가 서비스']
+const CARD_PRESETS = [30, 50, 100, 150, 200]
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+function fmt만원(won: number) {
+  const 만 = Math.round(won / 10000)
+  return 만 > 0 ? `${만.toLocaleString()}만원` : `${won.toLocaleString()}원`
+}
+
+// ─── 결과 화면 ────────────────────────────────────────────────────────────────
+function ResultScreen({
+  estimate,
+  navigate,
+}: {
+  estimate: QuickEstimate | null
+  navigate: (to: string) => void
+}) {
+  const hasData = estimate && estimate.total_saving_annual > 0
+
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`w-12 h-6 rounded-full relative transition-colors ${on ? 'bg-blue-600' : 'bg-gray-200'}`}
-    >
-      <div
-        className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${
-          on ? 'translate-x-6' : 'translate-x-0.5'
-        }`}
-      />
-    </button>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* 상단 녹색 영역 */}
+      <div className="bg-[#10b981] px-6 pt-16 pb-10 text-white">
+        <p className="text-[14px] opacity-75 mb-3 font-medium">STEP 4 · 절약 결과</p>
+
+        {hasData ? (
+          <>
+            <p className="text-[16px] opacity-80 mb-1">예상 연간 절약액</p>
+            <p className="text-[48px] font-extrabold leading-tight tracking-tight">
+              {fmt만원(estimate.total_saving_annual)}
+            </p>
+            <p className="text-[16px] opacity-75 mt-2">
+              매달 {fmt만원(estimate.total_saving_monthly)} 절약 가능
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[28px] font-extrabold leading-snug">
+              정보를 저장했어요 ✓
+            </p>
+            <p className="text-[15px] opacity-75 mt-2 leading-relaxed">
+              대시보드에서 맞춤<br />절약 추천을 확인하세요
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* 세부 내역 */}
+      {hasData && (
+        <div className="px-6 py-6">
+          <p className="text-[13px] text-gray-400 font-semibold mb-4 uppercase tracking-wide">
+            월간 절약 내역
+          </p>
+          <div className="space-y-1">
+            {estimate.card_saving_monthly > 0 && (
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="text-[22px]">💳</span>
+                  <span className="text-[15px] text-gray-700 font-medium">카드 혜택 최적화</span>
+                </div>
+                <span className="text-[16px] font-bold text-gray-900">
+                  +{fmt만원(estimate.card_saving_monthly)}
+                </span>
+              </div>
+            )}
+            {estimate.telecom_saving_monthly > 0 && (
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="text-[22px]">📱</span>
+                  <span className="text-[15px] text-gray-700 font-medium">통신비 절약</span>
+                </div>
+                <span className="text-[16px] font-bold text-gray-900">
+                  +{fmt만원(estimate.telecom_saving_monthly)}
+                </span>
+              </div>
+            )}
+          </div>
+          <p className="text-[12px] text-gray-400 mt-4">
+            * 실제 혜택은 사용 패턴에 따라 달라질 수 있어요
+          </p>
+        </div>
+      )}
+
+      {/* 하단 버튼 */}
+      <div className="mt-auto px-6 pb-10 space-y-3">
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="w-full bg-[#10b981] text-white py-[18px] rounded-2xl text-[18px] font-bold active:scale-[0.98] transition-all"
+        >
+          대시보드에서 확인하기
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/profile-edit')}
+          className="w-full border border-gray-200 text-gray-600 py-[16px] rounded-2xl text-[15px] font-semibold"
+        >
+          더 정확하게 계산하기
+        </button>
+      </div>
+    </div>
   )
 }
 
+// ─── 메인 온보딩 ──────────────────────────────────────────────────────────────
 export default function Onboarding() {
   const { user, refreshProfile } = useAuth()
   const navigate = useNavigate()
 
-  const [step, setStep] = useState(0)
-  const [saving, setSaving] = useState(false)
-
-  // Step 0
-  const [carrier, setCarrier] = useState<string | null>(null)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [telecomFee, setTelecomFee] = useState('')
-  const [contractEnd, setContractEnd] = useState('')
-
-  // Step 1
   const [cardMonthly, setCardMonthly] = useState('')
+  const [contractEnd, setContractEnd] = useState('')
+  const [estimate, setEstimate] = useState<QuickEstimate | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  // Step 2
-  const [hasOtt, setHasOtt] = useState(false)
-  const [hasRental, setHasRental] = useState(false)
+  const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3 | 4)
 
-  const save = async (data: Record<string, unknown>) => {
-    setSaving(true)
+  const skipAll = async () => {
+    setBusy(true)
     try {
-      await userProfileApi.update(data)
+      await userProfileApi.update({ onboarding_completed: true })
+      await refreshProfile()
+      navigate('/dashboard')
     } finally {
-      setSaving(false)
+      setBusy(false)
     }
   }
 
-  const handleNextStep0 = async () => {
-    await save({
-      telecom_carrier: carrier,
-      telecom_monthly_fee: telecomFee ? parseInt(telecomFee) : null,
-      contract_end_date: contractEnd || null,
-    })
-    setStep(1)
+  const finishAndEstimate = async () => {
+    setBusy(true)
+    try {
+      await userProfileApi.update({
+        telecom_monthly_fee: telecomFee ? Math.floor(Number(telecomFee)) * 10000 : null,
+        card_monthly_total: cardMonthly ? Math.floor(Number(cardMonthly)) * 10000 : null,
+        contract_end_date: contractEnd || null,
+        onboarding_completed: true,
+      })
+      await refreshProfile()
+
+      if (cardMonthly) {
+        try {
+          const res = await recommendationApi.quickEstimate(
+            Math.floor(Number(cardMonthly)) * 10000,
+          )
+          setEstimate(res.data)
+        } catch {
+          // 추정 실패 시 결과 화면은 기본 메시지로 표시
+        }
+      }
+      setStep(4)
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const handleNextStep1 = async () => {
-    await save({ card_monthly_total: cardMonthly ? parseInt(cardMonthly) : null })
-    setStep(2)
+  if (step === 4) {
+    return <ResultScreen estimate={estimate} navigate={navigate} />
   }
 
-  const handleComplete = async () => {
-    await save({ has_ott: hasOtt, has_rental: hasRental, onboarding_completed: true })
-    await refreshProfile()
-    navigate('/dashboard')
-  }
-
-  const handleSkipAll = async () => {
-    await save({ onboarding_completed: true })
-    await refreshProfile()
-    navigate('/dashboard')
-  }
+  const progressPct = ((step - 1) / 3) * 100
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">안녕하세요, {user?.username}님!</h1>
-          <p className="text-gray-500 mt-1 text-sm">맞춤 혜택 추천을 위해 정보를 입력해 주세요</p>
-        </div>
+    <div className="min-h-screen bg-white flex flex-col">
 
-        {/* Stepper */}
-        <div className="flex items-center justify-center mb-8">
-          {STEPS.map((label, i) => (
-            <div key={i} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
-                    i <= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'
+      {/* 진행 바 */}
+      <div className="h-[3px] bg-gray-100">
+        <div
+          className="h-full bg-[#10b981] transition-all duration-500 ease-out"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+
+      {/* 상단 내비 */}
+      <div className="flex items-center justify-between px-6 py-5">
+        {step > 1 ? (
+          <button type="button" onClick={goBack} className="text-[24px] text-gray-400 leading-none">
+            ←
+          </button>
+        ) : (
+          <div className="w-7" />
+        )}
+
+        <span className="text-[13px] text-gray-400 font-medium">{step} / 3</span>
+
+        <button
+          type="button"
+          onClick={skipAll}
+          disabled={busy}
+          className="text-[13px] text-gray-400 disabled:opacity-40"
+        >
+          건너뛰기
+        </button>
+      </div>
+
+      {/* 질문 영역 */}
+      <div className="flex-1 px-6 pt-4">
+
+        {/* STEP 1 — 통신비 */}
+        {step === 1 && (
+          <div>
+            <p className="text-[13px] text-[#10b981] font-bold mb-3 tracking-wide">STEP 1</p>
+            <h2 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
+              매달 통신비가<br />얼마인가요?
+            </h2>
+            <p className="text-[14px] text-gray-400 mb-10">
+              데이터 요금제 포함, 전체 금액
+            </p>
+
+            <div className="flex items-baseline bg-gray-50 rounded-2xl px-5 py-5">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={telecomFee}
+                onChange={(e) => setTelecomFee(e.target.value)}
+                placeholder="0"
+                autoFocus
+                className="flex-1 text-[40px] font-extrabold text-gray-900 placeholder:text-gray-200 bg-transparent outline-none"
+              />
+              <span className="text-[20px] text-gray-400 ml-2 font-medium">만원</span>
+            </div>
+
+            <p className="text-[13px] text-gray-400 mt-3">
+              예: 5G 요금제 기준 보통 5 ~ 8만원
+            </p>
+          </div>
+        )}
+
+        {/* STEP 2 — 카드 사용액 */}
+        {step === 2 && (
+          <div>
+            <p className="text-[13px] text-[#10b981] font-bold mb-3 tracking-wide">STEP 2</p>
+            <h2 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
+              한 달 카드로<br />얼마나 쓰세요?
+            </h2>
+            <p className="text-[14px] text-gray-400 mb-8">
+              카드 종류 상관없이 합산 금액
+            </p>
+
+            <div className="flex flex-wrap gap-2 mb-5">
+              {CARD_PRESETS.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setCardMonthly(cardMonthly === String(v) ? '' : String(v))}
+                  className={`px-5 py-2.5 rounded-full border text-[14px] font-semibold transition-colors ${
+                    cardMonthly === String(v)
+                      ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]'
+                      : 'border-gray-200 text-gray-500'
                   }`}
                 >
-                  {i < step ? '✓' : i + 1}
-                </div>
-                <span className={`text-xs mt-1 whitespace-nowrap ${i === step ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-                  {label}
-                </span>
-              </div>
-              {i < STEPS.length - 1 && (
-                <div className={`w-16 h-0.5 mb-4 mx-2 transition-colors ${i < step ? 'bg-blue-600' : 'bg-gray-200'}`} />
-              )}
+                  {v}만원
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-
-          {/* Step 0 — 통신사 정보 */}
-          {step === 0 && (
-            <div className="space-y-5">
-              <h2 className="text-lg font-semibold text-gray-800">통신사 정보</h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">통신사</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {CARRIERS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCarrier(c)}
-                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        carrier === c
-                          ? 'border-blue-600 bg-blue-50 text-blue-600'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">월 통신료</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={telecomFee}
-                    onChange={(e) => setTelecomFee(e.target.value)}
-                    placeholder="50000"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <span className="absolute right-3 top-2.5 text-sm text-gray-400">원</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">약정 종료일</label>
-                <input
-                  type="date"
-                  value={contractEnd}
-                  onChange={(e) => setContractEnd(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleNextStep0}
-                  disabled={saving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {saving ? '저장 중...' : '다음'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="px-4 py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  건너뛰기
-                </button>
-              </div>
+            <div className="flex items-baseline bg-gray-50 rounded-2xl px-5 py-5">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={cardMonthly}
+                onChange={(e) => setCardMonthly(e.target.value)}
+                placeholder="직접 입력"
+                autoFocus
+                className="flex-1 text-[40px] font-extrabold text-gray-900 placeholder:text-gray-200 bg-transparent outline-none"
+              />
+              <span className="text-[20px] text-gray-400 ml-2 font-medium">만원</span>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Step 1 — 카드 사용 현황 */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <h2 className="text-lg font-semibold text-gray-800">카드 사용 현황</h2>
+        {/* STEP 3 — 약정 종료일 */}
+        {step === 3 && (
+          <div>
+            <p className="text-[13px] text-[#10b981] font-bold mb-3 tracking-wide">STEP 3</p>
+            <h2 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
+              약정은 언제<br />끝나나요?
+            </h2>
+            <p className="text-[14px] text-gray-400 mb-10">
+              모르면 그냥 넘어가도 괜찮아요
+            </p>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">월 카드 사용액 (전체 합계)</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {CARD_PRESETS.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setCardMonthly(String(v))}
-                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-                        cardMonthly === String(v)
-                          ? 'border-blue-600 bg-blue-50 text-blue-600'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                      }`}
-                    >
-                      {(v / 10000).toFixed(0)}만원
-                    </button>
-                  ))}
-                </div>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={cardMonthly}
-                    onChange={(e) => setCardMonthly(e.target.value)}
-                    placeholder="직접 입력"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <span className="absolute right-3 top-2.5 text-sm text-gray-400">원</span>
-                </div>
-              </div>
+            <input
+              type="date"
+              value={contractEnd}
+              onChange={(e) => setContractEnd(e.target.value)}
+              className="w-full bg-gray-50 rounded-2xl px-5 py-5 text-[20px] font-bold text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
+            />
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(0)}
-                  className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  이전
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextStep1}
-                  disabled={saving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {saving ? '저장 중...' : '다음'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="px-4 py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  건너뛰기
-                </button>
-              </div>
-            </div>
-          )}
+            <p className="text-[13px] text-gray-400 mt-3">
+              약정 만료 시 더 저렴한 요금제로 바꿀 수 있어요
+            </p>
+          </div>
+        )}
+      </div>
 
-          {/* Step 2 — 부가 서비스 */}
-          {step === 2 && (
-            <div className="space-y-5">
-              <h2 className="text-lg font-semibold text-gray-800">부가 서비스</h2>
+      {/* 하단 버튼 */}
+      <div className="px-6 pb-10 pt-6">
+        <button
+          type="button"
+          onClick={step === 3 ? finishAndEstimate : () => setStep((step + 1) as 2 | 3 | 4)}
+          disabled={busy}
+          className="w-full bg-[#10b981] text-white py-[18px] rounded-2xl text-[18px] font-bold transition-all active:scale-[0.98] disabled:opacity-50"
+        >
+          {busy
+            ? '계산 중...'
+            : step === 3
+            ? '내 절약액 확인하기 →'
+            : '다음 →'}
+        </button>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">OTT 구독 중</p>
-                    <p className="text-xs text-gray-400 mt-0.5">넷플릭스, 디즈니+, 왓챠 등</p>
-                  </div>
-                  <Toggle on={hasOtt} onToggle={() => setHasOtt(!hasOtt)} />
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">렌탈 서비스 이용 중</p>
-                    <p className="text-xs text-gray-400 mt-0.5">정수기, 공기청정기, 안마의자 등</p>
-                  </div>
-                  <Toggle on={hasRental} onToggle={() => setHasRental(!hasRental)} />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  이전
-                </button>
-                <button
-                  type="button"
-                  onClick={handleComplete}
-                  disabled={saving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {saving ? '저장 중...' : '설정 완료'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 전체 건너뛰기 */}
-        <p className="text-center mt-5">
-          <button
-            type="button"
-            onClick={handleSkipAll}
-            disabled={saving}
-            className="text-xs text-gray-400 hover:text-gray-500 underline disabled:opacity-50"
-          >
-            지금은 건너뛰고 나중에 입력하기
-          </button>
-        </p>
+        {step === 1 && (
+          <p className="text-center text-[13px] text-gray-400 mt-4">
+            {user?.username}님, 3개 질문만 답하면 끝이에요
+          </p>
+        )}
       </div>
     </div>
   )

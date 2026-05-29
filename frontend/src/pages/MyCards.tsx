@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, CreditCard, Search, Trash2, X } from 'lucide-react'
 import Layout from '../components/Layout'
 import { myCardsApi } from '../lib/api'

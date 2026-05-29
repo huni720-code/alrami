@@ -15,13 +15,13 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   if (!user) return <Navigate to="/login" replace />
 
-  // 온보딩 미완료 시 /onboarding/step1 으로 리다이렉트 (/onboarding/* 경로와 어드민 제외)
+  // 온보딩 미완료 시 /onboarding 으로 리다이렉트 (/onboarding/* 경로와 어드민 제외)
   if (
     !user.is_admin &&
     !profile?.onboarding_completed &&
     !location.pathname.startsWith('/onboarding')
   ) {
-    return <Navigate to="/onboarding/step1" replace />
+    return <Navigate to="/onboarding" replace />
   }
 
   return <>{children}</>

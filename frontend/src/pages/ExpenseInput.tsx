@@ -11,9 +11,7 @@ function formatAmount(amount: string | number) {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-  })
+  return new Date(dateStr).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
 }
 
 export default function ExpenseInput() {
@@ -28,6 +26,7 @@ export default function ExpenseInput() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showForm, setShowForm] = useState(false)
 
   const now = new Date()
   const [filterYear, setFilterYear] = useState(now.getFullYear())
@@ -54,9 +53,11 @@ export default function ExpenseInput() {
         description: form.description || undefined,
         expense_date: form.expense_date + 'T00:00:00',
       })
-      setSuccess('지출이 등록되었습니다.')
+      setSuccess('등록됐어요!')
       setForm((prev) => ({ ...prev, amount: '', description: '' }))
+      setShowForm(false)
       loadExpenses()
+      setTimeout(() => setSuccess(''), 2000)
     } catch (err: any) {
       setError(err.response?.data?.detail || '등록에 실패했습니다.')
     } finally {
@@ -65,7 +66,7 @@ export default function ExpenseInput() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('삭제하시겠습니까?')) return
+    if (!confirm('삭제할까요?')) return
     await expenseApi.remove(id)
     setExpenses((prev) => prev.filter((e) => e.id !== id))
   }
@@ -74,149 +75,174 @@ export default function ExpenseInput() {
 
   return (
     <Layout>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">지출 입력</h2>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-[22px] font-extrabold text-gray-900">지출 기록</h2>
+          <p className="text-[13px] text-gray-400 mt-0.5">고정지출을 포함한 지출을 기록하세요</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setShowForm(!showForm); setError(''); setSuccess('') }}
+          className="bg-[#10b981] text-white px-4 py-2 rounded-xl text-[14px] font-semibold"
+        >
+          + 추가
+        </button>
+      </div>
 
-      {/* 입력 폼 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <h3 className="font-semibold text-gray-700 mb-4">새 지출 등록</h3>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">금액 (원)</label>
-            <input
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
-              required
-              min={1}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="예: 15000"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">날짜</label>
-            <input
-              type="date"
-              value={form.expense_date}
-              onChange={(e) => setForm((p) => ({ ...p, expense_date: e.target.value }))}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">메모 (선택)</label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="메모 입력"
-            />
-          </div>
+      {/* 성공 토스트 */}
+      {success && (
+        <div className="bg-[#10b981]/10 border border-[#10b981]/30 text-[#10b981] px-4 py-3 rounded-xl text-[14px] font-semibold mb-4 text-center">
+          {success}
+        </div>
+      )}
 
-          {error && (
-            <div className="md:col-span-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
-              {error}
+      {/* 입력 폼 — 접기/펼치기 */}
+      {showForm && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+          <h3 className="text-[16px] font-bold text-gray-800 mb-4">새 지출 추가</h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+
+            <div>
+              <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">얼마 썼어요?</label>
+              <div className="flex items-baseline bg-gray-50 rounded-xl px-4 py-3">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.amount}
+                  onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+                  required
+                  min={1}
+                  placeholder="0"
+                  className="flex-1 text-[22px] font-bold text-gray-900 placeholder:text-gray-300 bg-transparent outline-none"
+                />
+                <span className="text-[14px] text-gray-400 ml-1">원</span>
+              </div>
             </div>
-          )}
-          {success && (
-            <div className="md:col-span-2 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">
-              {success}
-            </div>
-          )}
 
-          <div className="md:col-span-2">
+            <div>
+              <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">어디서 썼어요?</label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, category: c }))}
+                    className={`px-3 py-1.5 rounded-full border text-[12px] font-medium transition-colors ${
+                      form.category === c
+                        ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]'
+                        : 'border-gray-200 text-gray-500'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">날짜</label>
+                <input
+                  type="date"
+                  value={form.expense_date}
+                  onChange={(e) => setForm((p) => ({ ...p, expense_date: e.target.value }))}
+                  required
+                  className="w-full bg-gray-50 rounded-xl px-3 py-2.5 text-[14px] text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">메모 (선택)</label>
+                <input
+                  type="text"
+                  value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="메모"
+                  className="w-full bg-gray-50 rounded-xl px-3 py-2.5 text-[14px] text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-xl text-[13px]">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={submitting}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-6 py-2 rounded-lg transition-colors"
+              className="w-full bg-[#10b981] disabled:bg-gray-100 text-white disabled:text-gray-300 py-3.5 rounded-xl text-[16px] font-bold transition-all active:scale-[0.98]"
             >
-              {submitting ? '등록 중...' : '지출 등록'}
+              {submitting ? '저장 중...' : '지출 등록'}
             </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
 
       {/* 지출 목록 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h3 className="font-semibold text-gray-700">지출 내역</h3>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[16px] font-bold text-gray-800">지출 내역</h3>
           <div className="flex items-center gap-2">
             <select
               value={filterYear}
               onChange={(e) => setFilterYear(Number(e.target.value))}
-              className="border border-gray-300 rounded px-2 py-1 text-sm"
+              className="border border-gray-200 rounded-lg px-2 py-1 text-[13px] text-gray-600 outline-none"
             >
               {[2024, 2025, 2026].map((y) => <option key={y}>{y}</option>)}
             </select>
             <select
               value={filterMonth}
               onChange={(e) => setFilterMonth(Number(e.target.value))}
-              className="border border-gray-300 rounded px-2 py-1 text-sm"
+              className="border border-gray-200 rounded-lg px-2 py-1 text-[13px] text-gray-600 outline-none"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m}>{m}</option>
+                <option key={m}>{m}월</option>
               ))}
             </select>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="flex justify-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]" />
           </div>
         ) : expenses.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-8">지출 내역이 없습니다.</p>
+          <p className="text-gray-400 text-[14px] text-center py-10">이번 달 지출 내역이 없어요</p>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 border-b border-gray-100">
-                    <th className="pb-2 pr-4">날짜</th>
-                    <th className="pb-2 pr-4">카테고리</th>
-                    <th className="pb-2 pr-4">메모</th>
-                    <th className="pb-2 pr-4 text-right">금액</th>
-                    <th className="pb-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {expenses.map((e) => (
-                    <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="py-2 pr-4 text-gray-600">{formatDate(e.expense_date)}</td>
-                      <td className="py-2 pr-4">
-                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">
-                          {e.category}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4 text-gray-500">{e.description || '-'}</td>
-                      <td className="py-2 pr-4 text-right font-medium">{formatAmount(e.amount)}</td>
-                      <td className="py-2">
-                        <button
-                          onClick={() => handleDelete(e.id)}
-                          className="text-red-400 hover:text-red-600 text-xs"
-                        >
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-1">
+              {expenses.map((e) => (
+                <div key={e.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[11px] font-medium">
+                        {e.category}
+                      </span>
+                      {e.description && (
+                        <p className="text-[12px] text-gray-400 mt-0.5">{e.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-[15px] font-bold text-gray-800">{formatAmount(e.amount)}</p>
+                      <p className="text-[11px] text-gray-400">{formatDate(e.expense_date)}</p>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(e.id)}
+                      className="text-gray-300 hover:text-red-400 text-[12px] transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
-              <span className="font-bold text-gray-800">
-                합계: {formatAmount(total)}
-              </span>
+            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+              <span className="text-[14px] text-gray-500">이번 달 합계</span>
+              <span className="text-[18px] font-extrabold text-gray-900">{formatAmount(total)}</span>
             </div>
           </>
         )}
