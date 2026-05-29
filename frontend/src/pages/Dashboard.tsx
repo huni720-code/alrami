@@ -9,6 +9,7 @@ import CardPerformanceSection from '../components/kpi/CardPerformanceSection'
 import ContractAlertSection from '../components/kpi/ContractAlertSection'
 import SavingsInsightCard from '../components/insight/SavingsInsightCard'
 import { generateInsight } from '../services/savingsInsight'
+import CardPortfolioSection from '../components/portfolio/CardPortfolioSection'
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-100 rounded-xl ${className}`} />
@@ -114,6 +115,14 @@ export default function Dashboard() {
           <SavingsInsightCard insight={insight} />
         )}
 
+        {/* ── 카드 사용 전략 ────────────────────────── */}
+        {!loading && onboardingDone && (
+          <CardPortfolioSection
+            cards={displayKpi.card_performance}
+            onAddCard={() => navigate('/my-cards')}
+          />
+        )}
+
         {/* ── 카드 실적 달성률 ──────────────────────── */}
         {loading ? (
           <Skeleton className="h-52 mb-4" />
@@ -123,20 +132,6 @@ export default function Dashboard() {
             summary={displayKpi.card_performance_summary}
             onSmsClick={() => navigate('/sms')}
           />
-        ) : onboardingDone ? (
-          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-            <p className="text-[15px] font-bold text-gray-900 mb-1">카드 실적</p>
-            <p className="text-[13px] text-gray-400 mb-3">
-              카드를 등록하면 결제 문자로 실적을 자동 추적해요
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/my-cards')}
-              className="w-full bg-emerald-50 text-[#10b981] py-3 rounded-xl text-[14px] font-semibold active:scale-[0.98] transition-all"
-            >
-              카드 등록하기 →
-            </button>
-          </div>
         ) : null}
 
         {/* ── 이번달 알람 ───────────────────────────── */}
