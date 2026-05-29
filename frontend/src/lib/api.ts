@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { DashboardKpi } from '../types/kpi'
+import type { ImportExpenseItem, ImportResult } from '../types/importExpense'
 
 export type { DashboardKpi }
 
@@ -342,6 +343,11 @@ export interface CardTransaction {
 
 export const dashboardApi = {
   kpi: () => api.get<DashboardKpi>('/dashboard/kpi'),
+}
+
+export const importApi = {
+  bulkSave: (items: ImportExpenseItem[]) =>
+    api.post<ImportResult>('/import/expenses', { items }),
 }
 
 export const myCardsApi = {

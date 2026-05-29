@@ -211,3 +211,45 @@ export function parseText(rawText: string): ImportParseResult {
 
   return { items, failed_lines }
 }
+
+// ── 블록 형식 파싱 ────────────────────────────────────────────
+//
+// [삼성카드]
+// 05/29 스타벅스 6,300원 승인
+//
+// [현대카드]
+// 05/29 쿠팡 42,000원 승인
+//
+export function parseBlocks(rawText: string): ImportParseResult {
+  const hasBlockHeader = /^\[[^\]]+\]\s*$/m.test(rawText)
+  if (!hasBlockHeader) return parseText(rawText)
+
+  const items: ParsedExpense[] = []
+  const failed_lines: string[] = []
+  let currentCard: string | null = null
+
+  for (const rawLine of rawText.split('\n')) {
+    const trimmed = rawLine.trim()
+    if (!trimmed) continue
+
+    const headerMatch = trimmed.match(/^\[([^\]]+)\]$/)
+    if (headerMatch) {
+      currentCard = headerMatch[1]
+      continue
+    }
+
+    const parsed = parseLine(trimmed)
+    if (parsed) {
+      const card_company = parsed.card_company ?? currentCard
+      items.push({
+        ...parsed,
+        card_company,
+        description: card_company ? `${card_company} ${parsed.merchant}` : parsed.merchant,
+      })
+    } else {
+      failed_lines.push(trimmed)
+    }
+  }
+
+  return { items, failed_lines }
+}
