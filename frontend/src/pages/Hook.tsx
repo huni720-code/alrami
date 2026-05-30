@@ -59,6 +59,11 @@ export default function Hook() {
     setTelecomError('')
     try {
       const res = await recommendationApi.telecomEstimate(telecomFee)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((res.data as any)?.error === 'benchmark_not_ready') {
+        setTelecomError('절약액 데이터 준비 중이에요. 잠시 후 다시 확인해주세요.')
+        return
+      }
       setTelecomResult(res.data)
       setTimeout(() => bridgeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
     } catch {
@@ -75,6 +80,11 @@ export default function Hook() {
     setCardError('')
     try {
       const res = await recommendationApi.quickEstimate(amount)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((res.data as any)?.error === 'benchmark_not_ready') {
+        setCardError('절약액 데이터 준비 중이에요. 잠시 후 다시 확인해주세요.')
+        return
+      }
       setCardResult(res.data)
     } catch {
       setCardError('잠시 후 다시 시도해주세요')

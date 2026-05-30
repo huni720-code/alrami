@@ -1,3 +1,4 @@
+import { Smartphone, Wrench } from 'lucide-react'
 import type { ContractAlertMessage } from '../../types/contractAlert'
 import type { KpiContract } from '../../types/kpi'
 import { generateContractMessage } from '../../services/contractAlertMessage'
@@ -59,14 +60,14 @@ export default function ContractAlertMessageCard({ contract, estimatedSaving, on
   })
 
   const s = SEVERITY_STYLE[msg.severity]
-  const typeIcon = contract.type === 'telecom' ? '📱' : '🔧'
+  const TypeIcon = contract.type === 'telecom' ? Smartphone : Wrench
 
   return (
     <div className={`rounded-2xl p-4 ${s.wrap}`}>
       {/* 헤더 행 */}
       <div className="flex items-start justify-between gap-2 mb-2.5">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[16px] shrink-0">{typeIcon}</span>
+          <TypeIcon size={16} className={`shrink-0 ${s.icon}`} />
           <p className={`text-[14px] font-bold leading-snug ${s.head}`}>{msg.headline}</p>
         </div>
         <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${s.badge}`}>

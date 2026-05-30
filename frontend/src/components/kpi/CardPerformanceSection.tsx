@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Zap, CheckCircle } from 'lucide-react'
 import type { KpiCardPerf, KpiCardPerfSummary } from '../../types/kpi'
 
 interface Props {
@@ -66,10 +67,11 @@ export default function CardPerformanceSection({ cards, summary, onSmsClick }: P
             urgentCard.remaining < 30000 ? 'bg-orange-50 border border-orange-100' : 'bg-emerald-50'
           }`}
         >
-          <p className={`text-[11px] font-semibold mb-0.5 ${
+          <p className={`text-[11px] font-semibold mb-0.5 flex items-center gap-1 ${
             urgentCard.remaining < 30000 ? 'text-orange-500' : 'text-[#10b981]'
           }`}>
-            {urgentCard.remaining < 30000 ? '⚡ 거의 다 됐어요!' : '💡 다음 목표까지'}
+            <Zap size={12} />
+            {urgentCard.remaining < 30000 ? '거의 다 됐어요!' : '다음 목표까지'}
           </p>
           <p className="text-[14px] font-bold text-gray-900">
             {urgentCard.nickname ?? urgentCard.card_name}
@@ -101,7 +103,7 @@ export default function CardPerformanceSection({ cards, summary, onSmsClick }: P
                 </span>
                 {cardHasTarget ? (
                   card.achieved ? (
-                    <span className="text-[13px] font-bold text-[#10b981]">✅ 실적 달성!</span>
+                    <span className="text-[13px] font-bold text-[#10b981] flex items-center gap-1"><CheckCircle size={13} /> 실적 달성!</span>
                   ) : (
                     <span className={`text-[13px] font-medium ${urgent ? 'text-orange-500' : 'text-gray-500'}`}>
                       {fmt(card.spent)} / {fmt(card.target!)}원
