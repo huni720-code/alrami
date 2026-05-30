@@ -367,6 +367,81 @@ export const importApi = {
     api.post<ImportResult>('/import/expenses', { items }),
 }
 
+// ── Contract (약정 watchdog) ─────────────────────────────────
+
+export interface ContractResponse {
+  id: number
+  category: string
+  provider: string
+  start_date: string | null
+  term_months: number | null
+  monthly_fee: number | null
+  penalty_fee: number | null
+  device_subsidy: number | null
+  end_date: string
+  accuracy: 'estimated' | 'confirmed'
+  is_active: boolean
+  dday: number
+}
+
+export interface ContractCreateInput {
+  category: string
+  provider: string
+  start_date?: string       // YYYY-MM-DD (start+term 경로)
+  term_months?: number
+  end_date?: string         // YYYY-MM-DD (confirmed 직접 입력 경로)
+  monthly_fee?: number
+  penalty_fee?: number
+  device_subsidy?: number
+  accuracy?: 'estimated' | 'confirmed'
+}
+
+export interface ContractUpdateInput {
+  category?: string
+  provider?: string
+  start_date?: string
+  term_months?: number
+  end_date?: string         // confirmed 승격 시 직접 override
+  monthly_fee?: number
+  penalty_fee?: number
+  device_subsidy?: number
+  accuracy?: 'estimated' | 'confirmed'
+  is_active?: boolean
+}
+
+export interface ContractEstimate {
+  end_date: string
+  dday: number
+}
+
+export interface ProviderInfo {
+  provider: string
+  short_number: string | null
+  center_number: string | null
+  app_name: string | null
+  check_path: string | null
+  category_hint: string | null
+}
+
+export const contractApi = {
+  list: (activeOnly = true) =>
+    api.get<ContractResponse[]>('/contracts', { params: { active_only: activeOnly } }),
+  create: (data: ContractCreateInput) =>
+    api.post<ContractResponse>('/contracts', data),
+  update: (id: number, data: ContractUpdateInput) =>
+    api.patch<ContractResponse>(`/contracts/${id}`, data),
+  remove: (id: number) =>
+    api.delete(`/contracts/${id}`),
+  estimate: (startDate: string, termMonths: number) =>
+    api.get<ContractEstimate>('/contracts/estimate', {
+      params: { start_date: startDate, term_months: termMonths },
+    }),
+  providerInfo: (provider?: string) =>
+    api.get<ProviderInfo[]>('/contracts/provider-info', {
+      params: provider ? { provider } : undefined,
+    }),
+}
+
 export const myCardsApi = {
   list: () => api.get<MyCard[]>('/my-cards'),
   cardCatalog: () => api.get<CardCatalogItem[]>('/my-cards/card-catalog'),

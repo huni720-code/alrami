@@ -17,6 +17,7 @@ import Step3 from './pages/onboarding/Step3'
 import Complete from './pages/onboarding/Complete'
 import ProfileEdit from './pages/ProfileEdit'
 import ExpenseImport from './pages/ExpenseImport'
+import ContractOnboarding from './pages/contracts/ContractOnboarding'
 import Coach from './pages/Coach'
 import Recommend from './pages/Recommend'
 import Overview from './pages/admin/Overview'
@@ -64,6 +65,7 @@ export default function App() {
       <Route path="/my-cards" element={<ProtectedRoute><MyCards /></ProtectedRoute>} />
       <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
+      <Route path="/contracts/onboarding" element={<ProtectedRoute><ContractOnboarding /></ProtectedRoute>} />
 
       {/* 관리자 콘솔 (중첩 라우트) */}
       <Route

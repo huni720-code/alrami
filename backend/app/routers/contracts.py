@@ -2,7 +2,7 @@ from calendar import monthrange
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -46,6 +46,33 @@ def _to_response(c: Contract) -> dict:
     }
 
 
+# ── 종료일 미리 계산 (DB 저장 없음) ──────────────────────────────
+# 주의: /{contract_id} 파라미터 라우트보다 먼저 등록해야 충돌 없음
+
+@router.get("/estimate")
+def estimate_contract(
+    start_date: date = Query(...),
+    term_months: int = Query(..., ge=1),
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
+):
+    end = _add_months(start_date, term_months)
+    return {"end_date": str(end), "dday": _dday(end)}
+
+
+# ── 약정 확인 도우미 (provider_info) ─────────────────────────────
+
+@router.get("/provider-info", response_model=List[ProviderInfoResponse])
+def list_provider_info(
+    provider: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
+):
+    q = db.query(ProviderInfo)
+    if provider:
+        q = q.filter(ProviderInfo.provider.ilike(f"%{provider}%"))
+    return q.order_by(ProviderInfo.provider).all()
+
+
 # ── 약정 목록 ─────────────────────────────────────────────────
 
 @router.get("", response_model=List[ContractResponse])
@@ -69,7 +96,12 @@ def create_contract(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    end_date = _add_months(body.start_date, body.term_months)
+    # end_date 직접 제공 시 계산 생략 (confirmed 경로)
+    if body.end_date is not None:
+        end_date = body.end_date
+    else:
+        end_date = _add_months(body.start_date, body.term_months)  # type: ignore[arg-type]
+
     contract = Contract(
         user_id=current_user.id,
         category=body.category,
@@ -105,15 +137,23 @@ def update_contract(
     if not contract:
         raise HTTPException(status_code=404, detail="약정을 찾을 수 없습니다.")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(contract, field, value)
+    update_data = body.model_dump(exclude_unset=True)
 
-    # start_date나 term_months가 바뀌었으면 end_date 재계산
-    if body.start_date is not None or body.term_months is not None:
-        sd = contract.start_date
-        tm = contract.term_months
-        if sd and tm:
-            contract.end_date = _add_months(sd, tm)
+    if "end_date" in update_data and update_data["end_date"] is not None:
+        # confirmed 직접 override: end_date만 설정, start+term 재계산 생략
+        contract.end_date = update_data.pop("end_date")
+        for field, value in update_data.items():
+            setattr(contract, field, value)
+    else:
+        update_data.pop("end_date", None)
+        for field, value in update_data.items():
+            setattr(contract, field, value)
+        # start_date나 term_months가 바뀌었으면 end_date 재계산
+        if body.start_date is not None or body.term_months is not None:
+            sd = contract.start_date
+            tm = contract.term_months
+            if sd and tm:
+                contract.end_date = _add_months(sd, tm)
 
     contract.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -137,17 +177,3 @@ def delete_contract(
         raise HTTPException(status_code=404, detail="약정을 찾을 수 없습니다.")
     db.delete(contract)
     db.commit()
-
-
-# ── 약정 확인 도우미 (provider_info) ─────────────────────────
-
-@router.get("/provider-info", response_model=List[ProviderInfoResponse])
-def list_provider_info(
-    provider: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),  # noqa: ARG001
-):
-    q = db.query(ProviderInfo)
-    if provider:
-        q = q.filter(ProviderInfo.provider.ilike(f"%{provider}%"))
-    return q.order_by(ProviderInfo.provider).all()

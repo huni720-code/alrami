@@ -1,7 +1,7 @@
 """add contracts and provider_info tables
 
-Revision ID: f1a2b3c4d5e6
-Revises: e98513ef9f56
+Revision ID: c1d2e3f4a5b6
+Revises: 0bd096db5ae8
 Create Date: 2026-05-30 00:00:00.000000
 
 """

@@ -1,17 +1,18 @@
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 VALID_CATEGORIES = {"휴대폰", "인터넷", "TV", "정수기", "비데", "렌탈가전"}
-VALID_ACCURACY = {"estimated", "confirmed"}
 
 
 class ContractCreate(BaseModel):
     category: str
     provider: str
-    start_date: date
-    term_months: int
+    # 두 경로: (1) start_date + term_months → end_date 계산  (2) end_date 직접 입력(confirmed)
+    start_date: Optional[date] = None
+    term_months: Optional[int] = None
+    end_date: Optional[date] = None   # 직접 입력 시 계산 생략
     monthly_fee: Optional[int] = None
     penalty_fee: Optional[int] = None
     device_subsidy: Optional[int] = None
@@ -26,10 +27,16 @@ class ContractCreate(BaseModel):
 
     @field_validator("term_months")
     @classmethod
-    def term_positive(cls, v: int) -> int:
-        if v <= 0:
+    def term_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
             raise ValueError("term_months는 1 이상이어야 합니다.")
         return v
+
+    @model_validator(mode="after")
+    def validate_date_fields(self) -> "ContractCreate":
+        if self.end_date is None and (self.start_date is None or self.term_months is None):
+            raise ValueError("end_date 직접 입력 또는 start_date + term_months 조합이 필요합니다.")
+        return self
 
 
 class ContractUpdate(BaseModel):
@@ -37,6 +44,7 @@ class ContractUpdate(BaseModel):
     provider: Optional[str] = None
     start_date: Optional[date] = None
     term_months: Optional[int] = None
+    end_date: Optional[date] = None   # confirmed 승격 시 직접 override
     monthly_fee: Optional[int] = None
     penalty_fee: Optional[int] = None
     device_subsidy: Optional[int] = None
@@ -56,7 +64,7 @@ class ContractResponse(BaseModel):
     end_date: date
     accuracy: str
     is_active: bool
-    dday: int           # 양수=남은 일수, 0=당일, 음수=초과
+    dday: int  # 양수=남은 일수, 0=당일, 음수=초과
 
     model_config = ConfigDict(from_attributes=True)
 
