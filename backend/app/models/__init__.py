@@ -8,9 +8,12 @@ from app.models.saving_benchmark import SavingBenchmark
 from app.models.user_profile import UserProfile
 from app.models.user_card import UserCard, CardTransaction
 from app.models.user_consent import UserConsent
+from app.models.contract import Contract
+from app.models.provider_info import ProviderInfo
 
 __all__ = [
     "User", "Alarm", "Expense", "Card", "CardBenefit", "TelecomPlan",
     "CrawlTask", "AdminLog", "SavingBenchmark", "UserProfile",
     "UserCard", "CardTransaction", "UserConsent",
+    "Contract", "ProviderInfo",
 ]

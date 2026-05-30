@@ -7,9 +7,10 @@ from app.routers.recommendations import router as recommendations_router
 from app.routers.my_cards import router as my_cards_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.import_router import router as import_router
+from app.routers.contracts import router as contracts_router
 
 __all__ = [
     "auth_router", "users_router", "alarms_router", "expenses_router",
     "admin_router", "recommendations_router", "my_cards_router", "dashboard_router",
-    "import_router",
+    "import_router", "contracts_router",
 ]
