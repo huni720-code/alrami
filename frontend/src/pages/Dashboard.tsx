@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, ChevronRight, Plus, TrendingDown } from 'lucide-react'
 import { dashboardApi, contractApi } from '../lib/api'
@@ -6,10 +6,7 @@ import type { DashboardKpi, ContractResponse } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import KpiGrid from '../components/kpi/KpiGrid'
-import CardPerformanceSection from '../components/kpi/CardPerformanceSection'
 import ContractAlertSection from '../components/kpi/ContractAlertSection'
-import SavingsInsightCard from '../components/insight/SavingsInsightCard'
-import { generateInsight } from '../services/savingsInsight'
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-100 rounded-xl ${className}`} />
@@ -56,7 +53,6 @@ export default function Dashboard() {
 
   const displayKpi = kpi ?? EMPTY_KPI
   const monthLabel = `${displayKpi.month.year}년 ${displayKpi.month.month}월`
-  const insight = useMemo(() => generateInsight(displayKpi), [displayKpi])
 
   // 약정 정렬: 긴급(dday<=30) 먼저, 최대 3개
   const topContracts = [...contracts]
@@ -193,22 +189,6 @@ export default function Dashboard() {
             </div>
             <ChevronRight size={18} className="text-gray-400 shrink-0" />
           </button>
-        )}
-
-        {/* ── 카드 실적 ─────────────────────────────── */}
-        {loading ? (
-          <Skeleton className="h-52 mb-4" />
-        ) : displayKpi.card_performance.length > 0 ? (
-          <CardPerformanceSection
-            cards={displayKpi.card_performance}
-            summary={displayKpi.card_performance_summary}
-            onSmsClick={() => navigate('/sms')}
-          />
-        ) : null}
-
-        {/* ── AI 절약 인사이트 ──────────────────────── */}
-        {!loading && onboardingDone && (
-          <SavingsInsightCard insight={insight} />
         )}
 
       </div>

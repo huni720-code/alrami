@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, CreditCard, Search, Trash2, X } from 'lucide-react'
 import Layout from '../components/Layout'
-import { myCardsApi } from '../lib/api'
-import type { CardCatalogItem, CardTransaction, MyCard, SmsParseResult } from '../lib/api'
+import { dashboardApi, myCardsApi } from '../lib/api'
+import type { CardCatalogItem, CardTransaction, DashboardKpi, MyCard, SmsParseResult } from '../lib/api'
+import SavingsInsightCard from '../components/insight/SavingsInsightCard'
+import { generateInsight } from '../services/savingsInsight'
 
 // ── 헬퍼 ─────────────────────────────────────────────────────
 
@@ -505,6 +507,7 @@ export default function MyCards() {
   const [tab, setTab] = useState<'performance' | 'transactions'>('performance')
   const [cards, setCards] = useState<MyCard[]>([])
   const [cardsLoading, setCardsLoading] = useState(true)
+  const [kpi, setKpi] = useState<DashboardKpi | null>(null)
 
   const fetchCards = () => {
     setCardsLoading(true)
@@ -514,7 +517,12 @@ export default function MyCards() {
       .finally(() => setCardsLoading(false))
   }
 
-  useEffect(() => { fetchCards() }, [])
+  useEffect(() => {
+    fetchCards()
+    dashboardApi.kpi().then((r) => setKpi(r.data)).catch(() => {})
+  }, [])
+
+  const insight = useMemo(() => kpi ? generateInsight(kpi) : null, [kpi])
 
   return (
     <Layout>
@@ -542,6 +550,8 @@ export default function MyCards() {
         ) : (
           <TransactionsTab />
         )}
+
+        {insight && <SavingsInsightCard insight={insight} />}
       </div>
     </Layout>
   )
