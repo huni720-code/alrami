@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     FROM_EMAIL: Optional[str] = None
     KAKAO_ALIMTALK_KEY: Optional[str] = None
     KAKAO_SENDER_KEY: Optional[str] = None
+    # 카카오 알림톡 템플릿 코드 — 채널 개설·템플릿 사전심사 후 실제 코드로 교체
+    KAKAO_CONTRACT_TEMPLATE_CODE: str = "ALRAMI_CONTRACT_DDAY"
+    # 서비스 URL — 알림톡 갈아타기 링크에 사용
+    SERVICE_URL: str = "http://localhost:5173"
 
     class Config:
         env_file = ".env"
