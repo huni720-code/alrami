@@ -9,7 +9,6 @@ const NAV = [
   { to: '/my-cards', label: '카드실적', icon: 'card' },
   { to: '/recommend', label: '추천', icon: 'star' },
   { to: '/settings', label: '내 정보', icon: 'settings' },
-  { to: '/alarms', label: '알람관리' },
 ]
 
 export default function Navbar() {

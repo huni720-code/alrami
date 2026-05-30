@@ -51,7 +51,7 @@ export default function SavingsInsightCard({ insight }: Props) {
         </div>
 
         {/* AI 라벨 */}
-        <p className="text-[10px] text-gray-300 mt-4 text-right">AI 절약 인사이트 · 규칙 기반</p>
+        <p className="text-[10px] text-gray-300 mt-4 text-right">절약 인사이트 · 규칙 기반</p>
       </div>
     </div>
   )

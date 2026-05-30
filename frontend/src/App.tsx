@@ -6,7 +6,6 @@ import OAuthCallback from './pages/OAuthCallback'
 import MyCards from './pages/MyCards'
 import Dashboard from './pages/Dashboard'
 import ExpenseInput from './pages/ExpenseInput'
-import AlarmList from './pages/AlarmList'
 import SmsSettings from './pages/SmsSettings'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './components/AdminLayout'
@@ -62,7 +61,6 @@ export default function App() {
       {/* 일반 사용자 라우트 */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/expenses" element={<ProtectedRoute><ExpenseInput /></ProtectedRoute>} />
-      <Route path="/alarms" element={<ProtectedRoute><AlarmList /></ProtectedRoute>} />
       <Route path="/sms" element={<ProtectedRoute><SmsSettings /></ProtectedRoute>} />
       <Route path="/expense-import" element={<ProtectedRoute><ExpenseImport /></ProtectedRoute>} />
       <Route path="/coach" element={<ProtectedRoute><Coach /></ProtectedRoute>} />
