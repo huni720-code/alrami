@@ -18,6 +18,7 @@ import Complete from './pages/onboarding/Complete'
 import ProfileEdit from './pages/ProfileEdit'
 import ExpenseImport from './pages/ExpenseImport'
 import ContractOnboarding from './pages/contracts/ContractOnboarding'
+import Hook from './pages/Hook'
 import Coach from './pages/Coach'
 import Recommend from './pages/Recommend'
 import Overview from './pages/admin/Overview'
@@ -45,6 +46,9 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/oauth/callback" element={<OAuthCallback />} />
+
+      {/* 훅 화면 (비로그인 가능) */}
+      <Route path="/hook" element={<Hook />} />
 
       {/* 온보딩 (기존) */}
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

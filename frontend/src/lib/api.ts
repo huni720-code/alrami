@@ -301,9 +301,18 @@ export interface Portfolio {
   total_annual_saving: number
 }
 
+export interface TelecomEstimate {
+  current_fee: number
+  saving_monthly: number
+  saving_annual: number
+  label: string
+}
+
 export const recommendationApi = {
   quickEstimate: (amount: number) =>
     api.get<QuickEstimate>('/recommendations/quick-estimate', { params: { amount } }),
+  telecomEstimate: (currentFee: number) =>
+    api.get<TelecomEstimate>('/recommendations/telecom-estimate', { params: { current_fee: currentFee } }),
   portfolio: () => api.get<Portfolio>('/recommendations/portfolio'),
 }
 

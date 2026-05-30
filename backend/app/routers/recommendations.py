@@ -98,6 +98,30 @@ def _calc_card_portfolio(
     }
 
 
+@router.get("/telecom-estimate")
+def telecom_estimate(current_fee: int, db: Session = Depends(get_db)):
+    benchmarks = (
+        db.query(SavingBenchmark)
+        .filter(SavingBenchmark.benchmark_type == "telecom")
+        .all()
+    )
+    if not benchmarks:
+        return {"error": "benchmark_not_ready"}
+
+    eligible = [b for b in benchmarks if b.spending_monthly and b.spending_monthly <= current_fee]
+    matched = (
+        max(eligible, key=lambda b: b.spending_monthly)
+        if eligible
+        else min(benchmarks, key=lambda b: b.spending_monthly or 0)
+    )
+    return {
+        "current_fee": current_fee,
+        "saving_monthly": matched.saving_monthly,
+        "saving_annual": matched.saving_annual,
+        "label": matched.label,
+    }
+
+
 @router.get("/quick-estimate")
 def quick_estimate(amount: int, db: Session = Depends(get_db)):
     card_benchmarks = (
