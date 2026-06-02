@@ -102,7 +102,7 @@ export default function Hook() {
 
   const handleCta = () => {
     sessionStorage.setItem('pending_contract', JSON.stringify({
-      category: 'mobile',
+      category: '휴대폰',
       provider: carrier,
       end_date: resolvedEndDate,
       monthly_fee: fee,

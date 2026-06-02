@@ -56,7 +56,8 @@ function ResultScreen({
             월간 절약 내역
           </p>
           <div className="space-y-1">
-            {estimate.card_saving_monthly > 0 && (
+            {/* FROZEN: card teaser suspended — code preserved */}
+            {false && estimate.card_saving_monthly > 0 && (
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
                 <div className="flex items-center gap-3">
                   <span className="text-[22px]">💳</span>

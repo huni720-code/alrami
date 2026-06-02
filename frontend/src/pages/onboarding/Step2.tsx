@@ -81,7 +81,7 @@ export default function Step2() {
   }
 
   const name = user?.username ?? '고객'
-  const annual = result.total_saving_monthly * 12
+  const annual = result.total_saving_annual
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6">
@@ -113,20 +113,24 @@ export default function Step2() {
             </p>
           </div>
 
-          <div className="h-px bg-gray-200" />
-
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-[22px]">💳</span>
-              <div>
-                <p className="text-[15px] font-semibold text-gray-800">카드 혜택</p>
-                <p className="text-[12px] text-gray-400">최적 카드 조합으로 교체</p>
+          {/* FROZEN: card teaser suspended — code preserved */}
+          {false && (
+            <>
+              <div className="h-px bg-gray-200" />
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-[22px]">💳</span>
+                  <div>
+                    <p className="text-[15px] font-semibold text-gray-800">카드 혜택</p>
+                    <p className="text-[12px] text-gray-400">최적 카드 조합으로 교체</p>
+                  </div>
+                </div>
+                <p className="text-[18px] font-bold text-[#10b981]">
+                  {displayCard.toLocaleString()}원
+                </p>
               </div>
-            </div>
-            <p className="text-[18px] font-bold text-[#10b981]">
-              {displayCard.toLocaleString()}원
-            </p>
-          </div>
+            </>
+          )}
         </div>
 
         {/* CTA */}
