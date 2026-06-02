@@ -85,7 +85,7 @@ export default function Login() {
 
         {/* 헤더 */}
         <div className="mb-10">
-          <p className="text-[15px] font-bold text-[#10b981] mb-6 tracking-tight">알라미</p>
+          <p className="text-[15px] font-bold text-[#10b981] mb-6 tracking-tight">만기톡</p>
           {fromOnboarding ? (
             <>
               <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">

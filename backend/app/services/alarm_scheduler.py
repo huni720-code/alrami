@@ -70,7 +70,7 @@ def _build_contract_email(username: str, contract: Contract, delta: int) -> str:
         f"<p>[{urgency}] {contract.provider} {contract.category} 약정이 "
         f"<strong>{contract.end_date}</strong>에 만료됩니다. "
         f"<strong>D-{delta}일</strong> 남았습니다.</p>"
-        f"<p>지금 알라미에서 갈아타기 유리한 조건을 확인해 보세요.</p>"
+        f"<p>지금 만기톡에서 갈아타기 유리한 조건을 확인해 보세요.</p>"
         f'<p><a href="{settings.SERVICE_URL}/contracts/onboarding">약정 확인하기 →</a></p>'
     )
 
@@ -146,7 +146,7 @@ def job_contract_dday() -> None:
 
             # 2순위: 이메일 fallback — 알림톡 키 없을 때만
             if not settings.KAKAO_ALIMTALK_KEY:
-                subject = f"[알라미] {c.category} 약정 만료 D-{delta}일 안내"
+                subject = f"[만기톡] {c.category} 약정 만료 D-{delta}일 안내"
                 body_html = _build_contract_email(user.username, c, delta)
                 _run_async(send_email(user.email, subject, body_html))
 
@@ -232,7 +232,7 @@ def job_card_performance() -> None:
             if not any_below_target:
                 continue
 
-            subject = "[알라미] 카드 실적 마감이 얼마 남지 않았어요"
+            subject = "[만기톡] 카드 실적 마감이 얼마 남지 않았어요"
             body_html = (
                 f"<h2>안녕하세요, {user.username}님!</h2>"
                 "<p>이번 달 카드 실적을 확인해 보세요.</p>"
@@ -312,7 +312,7 @@ def job_monthly_report() -> None:
             except (ImportError, OperationalError):
                 pass
 
-            subject = f"[알라미] {last_year}년 {last_month}월 절약 현황 리포트"
+            subject = f"[만기톡] {last_year}년 {last_month}월 절약 현황 리포트"
             body_html = (
                 f"<h2>안녕하세요, {user.username}님!</h2>"
                 f"<h3>{last_year}년 {last_month}월 지출 요약</h3>"
@@ -321,7 +321,7 @@ def job_monthly_report() -> None:
                 f"<tr><td>총 지출액</td><td>{int(total_expense):,}원</td></tr>"
                 f"<tr><td>카드 실적 달성</td><td>{achieved_cards}개</td></tr>"
                 "</table>"
-                f'<p><a href="{settings.SERVICE_URL}/dashboard">알라미 대시보드에서 자세히 보기 →</a></p>'
+                f'<p><a href="{settings.SERVICE_URL}/dashboard">만기톡 대시보드에서 자세히 보기 →</a></p>'
             )
             _run_async(send_email(user.email, subject, body_html))
 

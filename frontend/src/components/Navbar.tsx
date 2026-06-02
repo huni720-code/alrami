@@ -34,7 +34,7 @@ export default function Navbar() {
         <div className="max-w-lg mx-auto px-4 h-[52px] flex items-center justify-between">
           {/* 로고 */}
           <Link to="/dashboard" className="text-[20px] font-extrabold text-[#10b981] tracking-tight">
-            알라미
+            만기톡
           </Link>
 
           {/* 데스크탑: 가로 메뉴 */}

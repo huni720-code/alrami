@@ -82,7 +82,7 @@ export default function AdminLayout() {
       {/* 상단 헤더 바 */}
       <header className="h-12 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <span className="text-white font-bold text-sm">알라미</span>
+          <span className="text-white font-bold text-sm">만기톡</span>
           <span className="text-[10px] text-emerald-400 font-semibold tracking-widest uppercase">
             Admin Console
           </span>

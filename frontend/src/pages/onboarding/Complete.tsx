@@ -125,7 +125,7 @@ export default function Complete() {
           className="w-full bg-[#10b981] text-white py-[18px] rounded-2xl text-[17px] font-bold
             active:scale-[0.98] transition-all mt-auto"
         >
-          알라미 시작하기 →
+          만기톡 시작하기 →
         </button>
       </div>
     </div>

@@ -16,7 +16,7 @@ export default function Step1() {
       <div className="w-full max-w-sm mx-auto">
 
         {/* 브랜드 */}
-        <p className="text-[15px] font-bold text-[#10b981] mb-10 tracking-tight">알라미</p>
+        <p className="text-[15px] font-bold text-[#10b981] mb-10 tracking-tight">만기톡</p>
 
         {/* 헤드라인 */}
         <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-3">

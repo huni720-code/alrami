@@ -99,7 +99,7 @@ export default function Hook() {
     <div className="min-h-screen bg-white">
       {/* 브랜드 헤더 */}
       <div className="px-6 pt-14 pb-2">
-        <p className="text-[13px] font-bold text-[#10b981] mb-6 tracking-tight">알라미</p>
+        <p className="text-[13px] font-bold text-[#10b981] mb-6 tracking-tight">만기톡</p>
         <h1 className="text-[24px] font-extrabold text-gray-900 leading-tight">
           매달 고정지출,<br />얼마나 줄일 수 있을까요?
         </h1>

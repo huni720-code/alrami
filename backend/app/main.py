@@ -5,7 +5,7 @@ import app.models  # noqa: F401 - 모델 등록
 from app.routers import auth_router, users_router, alarms_router, expenses_router, admin_router, recommendations_router, my_cards_router, dashboard_router, import_router, contracts_router
 from app.services.alarm_scheduler import start_scheduler, stop_scheduler
 
-app = FastAPI(title="알라미 API", version="0.1.0")
+app = FastAPI(title="만기톡 API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,7 +39,7 @@ async def shutdown_event():
 
 @app.get("/")
 def root():
-    return {"message": "알라미 API 서버가 실행 중입니다."}
+    return {"message": "만기톡 API 서버가 실행 중입니다."}
 
 
 @app.get("/health")
