@@ -35,7 +35,7 @@ function RootRedirect() {
       <div className="w-8 h-8 rounded-full border-4 border-gray-100 border-t-[#10b981] animate-spin" />
     </div>
   )
-  return <Navigate to={user ? '/dashboard' : '/onboarding/step1'} replace />
+  return <Navigate to={user ? '/dashboard' : '/hook'} replace />
 }
 
 export default function App() {

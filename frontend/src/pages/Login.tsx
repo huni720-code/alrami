@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { authApi, userApi } from '../lib/api'
+import { authApi, userApi, contractApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
 const KAKAO_CLIENT_ID = import.meta.env.VITE_KAKAO_CLIENT_ID
@@ -9,7 +9,6 @@ const KAKAO_REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const GOOGLE_REDIRECT_URI = import.meta.env.VITE_GOOGLE_REDIRECT_URI
 
-// 로그인 후 pending 프로필 처리 공통 함수
 async function applyPendingProfile() {
   const raw = sessionStorage.getItem('pending_profile')
   if (!raw) return false
@@ -17,6 +16,19 @@ async function applyPendingProfile() {
     const data = JSON.parse(raw)
     await userApi.updateProfile(data)
     sessionStorage.removeItem('pending_profile')
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function applyPendingContract() {
+  const raw = sessionStorage.getItem('pending_contract')
+  if (!raw) return false
+  try {
+    const data = JSON.parse(raw)
+    await contractApi.create(data)
+    sessionStorage.removeItem('pending_contract')
     return true
   } catch {
     return false
@@ -35,6 +47,7 @@ export default function Login() {
   const fromOnboarding = searchParams.get('from') === 'onboarding'
 
   const afterLogin = async () => {
+    await applyPendingContract()
     const hadPending = await applyPendingProfile()
     if (hadPending) {
       navigate('/onboarding/complete')
@@ -86,7 +99,14 @@ export default function Login() {
         {/* 헤더 */}
         <div className="mb-10">
           <p className="text-[15px] font-bold text-[#10b981] mb-6 tracking-tight">만기톡</p>
-          {fromOnboarding ? (
+          {searchParams.get('from') === 'hook' ? (
+            <>
+              <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
+                만기 알림 켜기
+              </h1>
+              <p className="text-[16px] text-gray-400">로그인하면 약정이 바로 저장돼요</p>
+            </>
+          ) : fromOnboarding ? (
             <>
               <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
                 거의 다 됐어요! 🎉
@@ -98,7 +118,7 @@ export default function Login() {
               <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
                 다시 만나서 반가워요
               </h1>
-              <p className="text-[16px] text-gray-400">매달 통신·카드 절약을 자동으로</p>
+              <p className="text-[16px] text-gray-400">약정 만료일을 대신 지켜드릴게요</p>
             </>
           )}
         </div>

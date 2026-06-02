@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import api, { userApi } from '../lib/api'
+import api, { userApi, contractApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
 async function applyPendingProfile() {
@@ -10,6 +10,19 @@ async function applyPendingProfile() {
     const data = JSON.parse(raw)
     await userApi.updateProfile(data)
     sessionStorage.removeItem('pending_profile')
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function applyPendingContract() {
+  const raw = sessionStorage.getItem('pending_contract')
+  if (!raw) return false
+  try {
+    const data = JSON.parse(raw)
+    await contractApi.create(data)
+    sessionStorage.removeItem('pending_contract')
     return true
   } catch {
     return false
@@ -41,6 +54,7 @@ export default function OAuthCallback() {
     api.post<{ access_token: string }>(endpoint, { code })
       .then(async (res) => {
         await login(res.data.access_token)
+        await applyPendingContract()
         const hadPending = await applyPendingProfile()
         if (hadPending) {
           navigate('/onboarding/complete')
