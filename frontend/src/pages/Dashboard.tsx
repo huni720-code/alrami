@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Smartphone, Wifi, Tv, Droplets, Plus, X, ChevronRight } from 'lucide-react'
+import { Smartphone, Wifi, Tv, Droplets, Plus, X } from 'lucide-react'
 import { contractApi, dashboardApi } from '../lib/api'
 import type { ContractResponse } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
+
+// 제휴 링크 (가나다순 · 수수료 크기가 순서를 바꾸지 않는다)
+const MOYO_URL = 'https://www.moyoplan.com'
+const AITDA_URL = 'https://www.aitda.kr'
+
+const TELECOM_CATS = new Set(['휴대폰', '인터넷', 'TV'])
 
 // ── utils ──────────────────────────────────────────────────────────────────────
 
@@ -251,13 +257,12 @@ function HeroCard({
   contract,
   annualSaving,
   onTap,
-  onCta,
 }: {
   contract: ContractResponse
   annualSaving: number
   onTap: () => void
-  onCta: () => void
 }) {
+  const isTelecom = TELECOM_CATS.has(contract.category)
   const showCta = contract.dday <= 90
 
   return (
@@ -292,9 +297,12 @@ function HeroCard({
 
       <p className="text-[12px] text-white/70 mb-4">{fmtYearMonth(contract.end_date)} 만료</p>
 
-      {/* loss diagnosis */}
-      {annualSaving > 0 && (
+      {/* 통신만: 진단 (추정·근거·조건 3종 병기) */}
+      {isTelecom && annualSaving > 0 && (
         <div className="bg-white/15 rounded-2xl px-4 py-3 mb-4">
+          <p className="text-[10px] text-white/60 mb-1.5 leading-relaxed">
+            추정 · 입력하신 통신비 기준 · 알뜰폰 전환 가정
+          </p>
           <p className="text-[11px] text-white/75 mb-0.5">지금 안 바꾸면</p>
           <p className="text-[20px] font-extrabold text-white">
             연 약 {Math.round(annualSaving / 10000)}만원 손해
@@ -302,15 +310,44 @@ function HeroCard({
         </div>
       )}
 
-      {/* handoff CTA */}
+      {/* 카테고리별 CTA */}
       {showCta && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onCta() }}
-          className="w-full bg-white/20 active:bg-white/30 text-white font-bold py-3 rounded-2xl text-[14px] transition-all active:scale-[0.98]"
-        >
-          갈아타기 유리한 조건 보기 →
-        </button>
+        isTelecom ? (
+          <div className="space-y-2">
+            {/* 가나다순 · 수수료가 순서를 바꾸지 않는다 */}
+            <div className="flex gap-2">
+              <a
+                href={MOYO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 bg-white/20 active:bg-white/30 text-white font-bold py-3 rounded-2xl text-[14px] text-center transition-all active:scale-[0.98]"
+              >
+                모요
+              </a>
+              <a
+                href={AITDA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 bg-white/20 active:bg-white/30 text-white font-bold py-3 rounded-2xl text-[14px] text-center transition-all active:scale-[0.98]"
+              >
+                아정당
+              </a>
+            </div>
+            <p className="text-[10px] text-white/50 text-center leading-relaxed">
+              외부 서비스로 연결돼요 · 가입 시 만기톡이 수수료를 받아요
+            </p>
+          </div>
+        ) : (
+          /* 정수기: 갈아타기 아님, 소유이전·해지 안내만 (수익화 X) */
+          <div className="bg-white/15 rounded-2xl px-4 py-3">
+            <p className="text-[13px] text-white font-semibold mb-1">의무기간 종료 후엔</p>
+            <p className="text-[12px] text-white/80 leading-relaxed">
+              소유 이전 또는 해지가 가능해요.<br />렌탈사에 직접 문의해 보세요.
+            </p>
+          </div>
+        )
       )}
 
       <p className="text-[11px] text-white/40 text-center mt-3">탭해서 날짜 수정</p>
@@ -411,7 +448,6 @@ export default function Dashboard() {
             contract={hero}
             annualSaving={annualSaving}
             onTap={() => setEditTarget(hero)}
-            onCta={() => navigate('/hook')}
           />
         ) : (
           <EmptyState onAdd={() => navigate('/contracts/grid')} />

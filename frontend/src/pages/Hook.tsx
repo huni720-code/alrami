@@ -233,15 +233,19 @@ export default function Hook() {
             {result.saving_annual > 0 ? (
               <div className="rounded-2xl bg-[#E1F5EE] p-5">
                 <p className="text-[11px] text-[#0F6E56] font-semibold mb-1">
-                  알뜰폰으로 바꾸면 대략
+                  알뜰폰으로 바꾸면 (추정)
                 </p>
                 <p className="text-[28px] font-extrabold text-[#0F6E56]">
-                  연 {Math.round(result.saving_annual / 10000)}만원
-                  <span className="text-[16px] font-semibold ml-1">손해(추정)</span>
+                  연 약 {Math.round(result.saving_annual / 10000)}만원 손해
                 </p>
-                <p className="text-[12px] text-[#0F6E56] opacity-70 mt-1.5">
-                  월 약 {Math.round(result.saving_monthly / 1000)}천원 · 통신사 벤치마크 기준 추정
-                </p>
+                <div className="mt-2 space-y-0.5">
+                  <p className="text-[11px] text-[#0F6E56] opacity-70">
+                    근거: 입력하신 월 {feeInput}만원 기준
+                  </p>
+                  <p className="text-[11px] text-[#0F6E56] opacity-70">
+                    조건: 알뜰폰 전환 가정 · 실제 요금제·통화량에 따라 달라요
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl bg-gray-50 border border-gray-100 p-5">
