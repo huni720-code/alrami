@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Smartphone, Wifi, Tv, Droplets, WashingMachine, ShowerHead, ThumbsUp } from 'lucide-react'
+import { Smartphone, Wifi, Tv, Droplets, ThumbsUp } from 'lucide-react'
 import { contractApi } from '../../lib/api'
 import type { ContractEstimate, ProviderInfo } from '../../lib/api'
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 
-type Category = '휴대폰' | '인터넷' | 'TV' | '정수기' | '렌탈가전' | '비데'
+type Category = '휴대폰' | '인터넷' | 'TV' | '정수기'
 type Screen = 'phone' | 'grid' | 'category' | 'helper'
 
 const CARRIER_OPTIONS: Record<Category, string[]> = {
@@ -15,8 +15,6 @@ const CARRIER_OPTIONS: Record<Category, string[]> = {
   인터넷: ['SKT', 'KT', 'LG U+'],
   TV: ['SKT', 'KT', 'LG U+'],
   정수기: ['코웨이', '청호나이스', 'LG전자', 'SK매직', '쿠쿠', '기타'],
-  렌탈가전: ['코웨이', 'LG전자', 'SK매직', '교원웰스', '기타'],
-  비데: ['코웨이', '청호나이스', 'SK매직', '기타'],
 }
 
 const SIGNUP_OPTIONS = ['올해', '작년', '재작년', '그이전', '모름'] as const
@@ -28,8 +26,6 @@ const GRID_ITEMS: { cat: Category; Icon: LucideIcon }[] = [
   { cat: '인터넷', Icon: Wifi },
   { cat: 'TV', Icon: Tv },
   { cat: '정수기', Icon: Droplets },
-  { cat: '렌탈가전', Icon: WashingMachine },
-  { cat: '비데', Icon: ShowerHead },
 ]
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
@@ -126,8 +122,7 @@ function ContractFormView({
   const isNoContract = form.termOption === '무약정'
   const isComplete = !!form.carrier && !!form.signupYear && !!form.termOption
   const isUnknown = form.signupYear === '모름' || form.termOption === '모름'
-  const providerLabel =
-    category === '정수기' || category === '렌탈가전' || category === '비데' ? '렌탈사' : '통신사'
+  const providerLabel = category === '정수기' ? '렌탈사' : '통신사'
 
   // estimate 호출
   useEffect(() => {
