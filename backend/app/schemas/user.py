@@ -7,13 +7,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
+    phone: Optional[str] = None
     password: str
 
     @field_validator("username")
     @classmethod
     def username_not_empty(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("사용자명은 비워둘 수 없습니다.")
+            raise ValueError("이름은 비워둘 수 없습니다.")
         return v.strip()
 
     @field_validator("password")
@@ -31,6 +32,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     is_active: bool
     is_admin: bool
+    auth_provider: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -60,6 +62,18 @@ class UserProfileUpdate(BaseModel):
     has_rental: Optional[bool] = None
     rental_end_date: Optional[date] = None
     onboarding_completed: Optional[bool] = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("비밀번호는 8자 이상이어야 합니다.")
+        return v
 
 
 class UserProfileResponse(BaseModel):

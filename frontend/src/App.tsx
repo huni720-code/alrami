@@ -15,6 +15,8 @@ import Step2 from './pages/onboarding/Step2'
 import Step3 from './pages/onboarding/Step3'
 import Complete from './pages/onboarding/Complete'
 import ProfileEdit from './pages/ProfileEdit'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 import ExpenseImport from './pages/ExpenseImport'
 import ContractOnboarding from './pages/contracts/ContractOnboarding'
 import ContractGrid from './pages/contracts/ContractGrid'
@@ -50,6 +52,10 @@ export default function App() {
       {/* 훅 화면 (비로그인 가능) */}
       <Route path="/hook" element={<Hook />} />
 
+      {/* 약관·개인정보 (공개) */}
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+
       {/* 온보딩 (기존) */}
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
@@ -75,7 +81,7 @@ export default function App() {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <AdminLayout />
           </ProtectedRoute>
         }

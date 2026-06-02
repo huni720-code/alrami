@@ -22,26 +22,6 @@ const NAV = [
     ),
   },
   {
-    to: '/admin/engine',
-    label: '추천엔진',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    to: '/admin/data',
-    label: '데이터 관리',
-    icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-        <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-        <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-        <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
-      </svg>
-    ),
-  },
-  {
     to: '/admin/notifications',
     label: '알림 관리',
     icon: (

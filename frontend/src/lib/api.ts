@@ -33,7 +33,7 @@ export default api
 
 // Auth
 export const authApi = {
-  register: (data: { email: string; username: string; password: string }) =>
+  register: (data: { email: string; username: string; phone?: string; password: string }) =>
     api.post('/auth/register', data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
@@ -93,6 +93,7 @@ export interface User {
   phone: string | null
   is_active: boolean
   is_admin: boolean
+  auth_provider: string
   created_at: string
 }
 
@@ -169,12 +170,11 @@ export const adminApi = {
 export interface AdminStats {
   users_total: number
   users_new_7d: number
-  expenses_total: number
-  expenses_this_month: number
+  contracts_active: number
+  contracts_expiring_30d: number
   alarms_active: number
-  cards_count: number
-  telecom_count: number
-  last_crawl_month: string | null
+  switches_total: number
+  switches_saving_annual: number
   logs_today: number
 }
 
@@ -321,6 +321,9 @@ export const userApi = {
   getProfile: () => api.get<UserProfile>('/users/me/profile'),
   updateProfile: (data: UserProfileUpdate) => api.patch<UserProfile>('/users/me/profile', data),
   updateMe: (data: { phone?: string; username?: string }) => api.patch<User>('/users/me', data),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.patch('/users/me/password', data),
+  deleteMe: () => api.delete('/users/me'),
 }
 
 // MyCards types

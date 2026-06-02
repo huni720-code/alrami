@@ -39,6 +39,10 @@ export default function Overview() {
     )
   }
 
+  const savingLabel = stats.switches_saving_annual >= 10000
+    ? `연 약 ${Math.round(stats.switches_saving_annual / 10000)}만원`
+    : `${stats.switches_saving_annual.toLocaleString()}원`
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -46,22 +50,22 @@ export default function Overview() {
         <p className="text-sm text-gray-500 mt-1">서비스 운영 현황</p>
       </div>
 
-      {/* 사용자 / 활동 */}
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">사용자 &amp; 활동</p>
+      {/* 사용자 */}
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">사용자</p>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="전체 사용자" value={`${stats.users_total}명`} sub="누적 가입" />
         <StatCard label="신규 가입" value={`${stats.users_new_7d}명`} sub="최근 7일" accent />
-        <StatCard label="지출 기록" value={`${stats.expenses_total}건`} sub={`이번달 ${stats.expenses_this_month}건`} />
+        <StatCard label="운영 로그" value={`${stats.logs_today}건`} sub="오늘" />
         <StatCard label="활성 알람" value={`${stats.alarms_active}개`} sub="전체 사용자" />
       </div>
 
-      {/* 데이터 / 시스템 */}
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">데이터 &amp; 시스템</p>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="보유 카드" value={`${stats.cards_count}개`} sub={stats.last_crawl_month ? `${stats.last_crawl_month} 기준` : '-'} />
-        <StatCard label="보유 요금제" value={`${stats.telecom_count}개`} sub={stats.last_crawl_month ? `${stats.last_crawl_month} 기준` : '-'} />
-        <StatCard label="마지막 크롤링" value={stats.last_crawl_month || '-'} sub="승인된 데이터" />
-        <StatCard label="오늘 운영 로그" value={`${stats.logs_today}건`} sub="관리자 액션" />
+      {/* 약정 */}
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">약정 watchdog</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard label="활성 약정" value={`${stats.contracts_active}건`} sub="전체" />
+        <StatCard label="30일 내 만료" value={`${stats.contracts_expiring_30d}건`} sub="D-30 이내" accent={stats.contracts_expiring_30d > 0} />
+        <StatCard label="전환 완료" value={`${stats.switches_total}건`} sub="갈아탔어요" />
+        <StatCard label="추정 절감액" value={savingLabel} sub="전환 건 합산" />
       </div>
     </div>
   )

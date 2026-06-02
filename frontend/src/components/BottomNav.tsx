@@ -23,16 +23,6 @@ const TABS = [
       </svg>
     ),
   },
-  {
-    to: '/coach',
-    label: '코치',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#10b981' : '#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-      </svg>
-    ),
-  },
 ]
 
 export default function BottomNav() {
@@ -40,8 +30,7 @@ export default function BottomNav() {
   const navigate = useNavigate()
 
   return (
-    /* 모바일만 표시 — md 이상은 숨김 */
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white border-t border-gray-100 safe-bottom">
       <div className="flex items-stretch h-[60px] max-w-lg mx-auto">
         {TABS.map((tab) => {
           const active = location.pathname === tab.to ||

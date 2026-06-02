@@ -10,8 +10,12 @@ from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
 from app.crawlers.card_crawler import CardCrawler
 from app.crawlers.telecom_crawler import TelecomCrawler
+from sqlalchemy import func as sa_func
+
 from app.models.admin_log import AdminLog
 from app.models.alarm import Alarm
+from app.models.contract import Contract
+from app.models.contract_switch_log import ContractSwitchLog
 from app.models.crawl_task import CrawlTask
 from app.models.expense import Expense
 from app.models.product import Card, CardBenefit, TelecomPlan
@@ -95,33 +99,32 @@ async def _run_crawl(task_id: int, target: str) -> None:
 
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    from datetime import date as date_type
     now = datetime.now(timezone.utc)
+    today = now.date()
     week_ago = now - timedelta(days=7)
+    thirty_days_later = today + timedelta(days=30)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    last_task = (
-        db.query(CrawlTask)
-        .filter(CrawlTask.status == "completed", CrawlTask.approved == True)
-        .order_by(CrawlTask.completed_at.desc())
-        .first()
-    )
+    contracts_expiring = db.query(Contract).filter(
+        Contract.is_active == True,
+        Contract.end_date >= today,
+        Contract.end_date <= thirty_days_later,
+    ).count()
+
+    switches_total = db.query(ContractSwitchLog).filter(ContractSwitchLog.switched == True).count()
+    savings_raw = db.query(sa_func.sum(ContractSwitchLog.estimated_saving_annual)).filter(
+        ContractSwitchLog.switched == True
+    ).scalar()
 
     return {
         "users_total": db.query(User).count(),
         "users_new_7d": db.query(User).filter(User.created_at >= week_ago).count(),
-        "expenses_total": db.query(Expense).count(),
-        "expenses_this_month": db.query(Expense).filter(
-            extract("year", Expense.expense_date) == now.year,
-            extract("month", Expense.expense_date) == now.month,
-        ).count(),
+        "contracts_active": db.query(Contract).filter(Contract.is_active == True).count(),
+        "contracts_expiring_30d": contracts_expiring,
         "alarms_active": db.query(Alarm).filter(Alarm.is_active == True).count(),
-        "cards_count": db.query(Card).filter(Card.is_latest == True).count(),
-        "telecom_count": db.query(TelecomPlan).filter(TelecomPlan.is_latest == True).count(),
-        "last_crawl_month": (
-            last_task.completed_at.strftime("%Y-%m")
-            if last_task and last_task.completed_at
-            else None
-        ),
+        "switches_total": switches_total,
+        "switches_saving_annual": int(savings_raw or 0),
         "logs_today": db.query(AdminLog).filter(AdminLog.created_at >= today_start).count(),
     }
 

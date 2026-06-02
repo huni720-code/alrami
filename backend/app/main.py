@@ -31,6 +31,23 @@ app.include_router(switch_logs_router, prefix="/api")
 @app.on_event("startup")
 async def startup_event():
     start_scheduler()
+    _bootstrap_admin()
+
+
+def _bootstrap_admin() -> None:
+    from app.core.config import settings
+    from app.core.database import SessionLocal
+    from app.models.user import User as UserModel
+    if not settings.ADMIN_EMAIL:
+        return
+    db = SessionLocal()
+    try:
+        user = db.query(UserModel).filter(UserModel.email == settings.ADMIN_EMAIL).first()
+        if user and not user.is_admin:
+            user.is_admin = True
+            db.commit()
+    finally:
+        db.close()
 
 
 @app.on_event("shutdown")

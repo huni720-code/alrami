@@ -44,12 +44,12 @@ export default function OAuthCallback() {
     const fromOnboarding = searchParams.get('from') === 'onboarding'
     const error = searchParams.get('error')
 
-    if (error || !code || !provider) {
+    if (error || !code || provider !== 'kakao') {
       navigate('/login')
       return
     }
 
-    const endpoint = provider === 'kakao' ? '/auth/kakao/callback' : '/auth/google/callback'
+    const endpoint = '/auth/kakao/callback'
 
     api.post<{ access_token: string }>(endpoint, { code })
       .then(async (res) => {

@@ -1,95 +1,319 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { userApi, switchLogApi } from '../lib/api'
-import type { SwitchLogSummary } from '../lib/api'
+import { useState, useEffect, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { userApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 
-const CARRIERS = ['SKT', 'KT', 'LGU+', '알뜰폰'] as const
-const CARRIER_API: Record<string, string> = { SKT: 'SKT', KT: 'KT', 'LGU+': 'LGU+', '알뜰폰': 'MVNO' }
-const CARRIER_DISPLAY: Record<string, string> = { SKT: 'SKT', KT: 'KT', 'LGU+': 'LGU+', MVNO: '알뜰폰' }
+// ── Toggle ─────────────────────────────────────────────────────────────────────
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className={`w-12 h-6 rounded-full relative transition-colors ${on ? 'bg-[#10b981]' : 'bg-gray-200'}`}
+      className={`w-11 h-6 rounded-full relative transition-colors flex-shrink-0 ${on ? 'bg-[#10b981]' : 'bg-gray-200'}`}
     >
-      <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${on ? 'translate-x-6' : 'translate-x-0.5'}`} />
+      <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
     </button>
   )
 }
 
-export default function ProfileEdit() {
-  const navigate = useNavigate()
-  const { profile, refreshProfile } = useAuth()
+// ── SectionTitle ───────────────────────────────────────────────────────────────
 
-  // 필수
-  const [telecomFee, setTelecomFee] = useState('')
-  const [cardTotal, setCardTotal] = useState('')
-  const [contractEnd, setContractEnd] = useState('')
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide px-1 mb-2 mt-1">
+      {children}
+    </p>
+  )
+}
 
-  // 선택
-  const [showOptional, setShowOptional] = useState(false)
-  const [carrier, setCarrier] = useState<string | null>(null)
-  const [hasOtt, setHasOtt] = useState(false)
-  const [hasRental, setHasRental] = useState(false)
-  const [rentalEnd, setRentalEnd] = useState('')
+// ── EditRow (인라인 편집) ───────────────────────────────────────────────────────
 
-  const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState(false)
-  const [switchSummary, setSwitchSummary] = useState<SwitchLogSummary | null>(null)
+function EditRow({
+  label,
+  value,
+  placeholder,
+  inputType = 'text',
+  onSave,
+}: {
+  label: string
+  value: string | null
+  placeholder: string
+  inputType?: string
+  onSave: (val: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [input, setInput] = useState(value ?? '')
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  useEffect(() => {
-    switchLogApi.summary().then((r) => setSwitchSummary(r.data)).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (!profile) return
-    if (profile.telecom_carrier) setCarrier(CARRIER_DISPLAY[profile.telecom_carrier] ?? profile.telecom_carrier)
-    if (profile.telecom_monthly_fee) setTelecomFee(String(profile.telecom_monthly_fee / 10000))
-    if (profile.contract_end_date) setContractEnd(profile.contract_end_date)
-    if (profile.card_monthly_total) setCardTotal(String(profile.card_monthly_total / 10000))
-    setHasOtt(profile.has_ott ?? false)
-    setHasRental(profile.has_rental ?? false)
-    if (profile.rental_end_date) setRentalEnd(profile.rental_end_date)
-  }, [profile])
-
-  const canSubmit = telecomFee.trim() !== '' || cardTotal.trim() !== ''
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return
-    setSaving(true)
+  const handleSave = async () => {
+    setBusy(true)
     try {
-      await userApi.updateProfile({
-        telecom_carrier: carrier ? CARRIER_API[carrier] : null,
-        telecom_monthly_fee: telecomFee ? Math.floor(Number(telecomFee)) * 10000 : null,
-        contract_end_date: contractEnd || null,
-        card_monthly_total: cardTotal ? Math.floor(Number(cardTotal)) * 10000 : null,
-        has_ott: hasOtt,
-        has_rental: hasRental,
-        rental_end_date: hasRental && rentalEnd ? rentalEnd : null,
-        onboarding_completed: true,
-      })
-      await refreshProfile()
-      setDone(true)
-      setTimeout(() => navigate('/dashboard'), 1200)
+      await onSave(input)
+      setSaved(true)
+      setEditing(false)
+      setTimeout(() => setSaved(false), 2000)
     } finally {
-      setSaving(false)
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="py-3.5 space-y-2">
+        <p className="text-[12px] text-gray-400 font-semibold">{label}</p>
+        <input
+          type={inputType}
+          inputMode={inputType === 'tel' ? 'numeric' : 'text'}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          placeholder={placeholder}
+          autoFocus
+          className="w-full border-2 border-[#10b981] rounded-xl px-4 py-2.5 text-[15px] outline-none"
+        />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={handleSave}
+            className="flex-1 bg-[#10b981] text-white font-bold py-2 rounded-xl text-[14px] disabled:opacity-50"
+          >
+            {busy ? '저장 중...' : '저장'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEditing(false); setInput(value ?? '') }}
+            className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-[14px]"
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="w-full flex items-center justify-between py-3.5 active:bg-gray-50 rounded-lg transition-colors"
+    >
+      <span className="text-[15px] text-gray-800">{label}</span>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-[14px] text-gray-400 truncate max-w-[150px]">
+          {saved ? '저장됐어요 ✓' : (value || placeholder)}
+        </span>
+        <span className="text-[12px] text-[#10b981] font-semibold flex-shrink-0">변경</span>
+      </div>
+    </button>
+  )
+}
+
+// ── 비밀번호 변경 ───────────────────────────────────────────────────────────────
+
+function PasswordChangeSection() {
+  const [open, setOpen] = useState(false)
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+
+  const reset = () => { setCurrent(''); setNext(''); setConfirm(''); setError(''); setOpen(false) }
+
+  const handleSave = async () => {
+    if (next.length < 8) { setError('새 비밀번호는 8자 이상이어야 해요.'); return }
+    if (next !== confirm) { setError('새 비밀번호가 일치하지 않아요.'); return }
+    setBusy(true)
+    setError('')
+    try {
+      await userApi.changePassword({ current_password: current, new_password: next })
+      setDone(true)
+      setTimeout(reset, 2000)
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || '비밀번호 변경에 실패했어요.')
+    } finally {
+      setBusy(false)
     }
   }
 
   if (done) {
     return (
-      <Layout>
-        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
-          <div className="text-[52px] mb-3">✅</div>
-          <p className="text-[20px] font-bold text-gray-800">저장됐어요!</p>
-          <p className="text-[14px] text-gray-400 mt-1">대시보드로 이동합니다...</p>
-        </div>
-      </Layout>
+      <div className="py-3.5 px-0.5">
+        <p className="text-[14px] text-[#10b981] font-semibold">비밀번호가 변경됐어요 ✓</p>
+      </div>
     )
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-between py-3.5 active:bg-gray-50 rounded-lg transition-colors"
+      >
+        <span className="text-[15px] text-gray-800">비밀번호 변경</span>
+        <span className="text-gray-300 text-[18px] leading-none">›</span>
+      </button>
+    )
+  }
+
+  return (
+    <div className="py-3.5 space-y-2.5">
+      <p className="text-[13px] font-semibold text-gray-700">비밀번호 변경</p>
+      <input
+        type="password"
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+        placeholder="현재 비밀번호"
+        autoFocus
+        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] outline-none focus:border-[#10b981]"
+      />
+      <input
+        type="password"
+        value={next}
+        onChange={(e) => setNext(e.target.value)}
+        placeholder="새 비밀번호 (8자 이상)"
+        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] outline-none focus:border-[#10b981]"
+      />
+      <input
+        type="password"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        placeholder="새 비밀번호 확인"
+        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] outline-none focus:border-[#10b981]"
+      />
+      {error && <p className="text-[12px] text-red-400">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy || !current || !next || !confirm}
+          onClick={handleSave}
+          className="flex-1 bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold py-2 rounded-xl text-[14px]"
+        >
+          {busy ? '저장 중...' : '저장'}
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-[14px]"
+        >
+          취소
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── 알림 시점 (localStorage) ───────────────────────────────────────────────────
+
+const TIMING_OPTIONS = [
+  { key: 'D-30', label: '만료 30일 전' },
+  { key: 'D-7',  label: '만료 7일 전' },
+  { key: 'D+7',  label: '만료 후 7일' },
+]
+
+interface NotifPref {
+  timing: string[]
+}
+
+function loadNotifPref(userId: number): NotifPref {
+  try {
+    const raw = localStorage.getItem(`notif:${userId}`)
+    if (raw) return JSON.parse(raw) as NotifPref
+  } catch {}
+  return { timing: ['D-30', 'D-7'] }
+}
+
+function saveNotifPref(userId: number, pref: NotifPref) {
+  localStorage.setItem(`notif:${userId}`, JSON.stringify(pref))
+}
+
+// ── 회원 탈퇴 확인 ─────────────────────────────────────────────────────────────
+
+function WithdrawSection({ onConfirm }: { onConfirm: () => Promise<void> }) {
+  const [step, setStep] = useState<'idle' | 'confirm'>('idle')
+  const [busy, setBusy] = useState(false)
+
+  if (step === 'confirm') {
+    return (
+      <div className="py-3 space-y-2.5">
+        <p className="text-[13px] text-gray-500 leading-relaxed">
+          탈퇴하면 약정·절감 기록이 모두 삭제되며 복구할 수 없어요.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => { setBusy(true); await onConfirm() }}
+            className="flex-1 border-2 border-red-400 text-red-500 font-bold py-2.5 rounded-xl text-[14px] disabled:opacity-50"
+          >
+            {busy ? '처리 중...' : '탈퇴 확인'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep('idle')}
+            className="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-xl text-[14px]"
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setStep('confirm')}
+      className="w-full flex items-center justify-between py-3.5 active:bg-gray-50 rounded-lg transition-colors"
+    >
+      <span className="text-[15px] text-red-400">회원 탈퇴</span>
+      <span className="text-gray-300 text-[18px] leading-none">›</span>
+    </button>
+  )
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
+
+export default function ProfileEdit() {
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+
+  const [notif, setNotif] = useState<NotifPref>({ timing: ['D-30', 'D-7'] })
+
+  useEffect(() => {
+    if (user) setNotif(loadNotifPref(user.id))
+  }, [user?.id])
+
+  const toggleTiming = useCallback((key: string) => {
+    if (!user) return
+    setNotif((prev) => {
+      const has = prev.timing.includes(key)
+      const next = { timing: has ? prev.timing.filter((k) => k !== key) : [...prev.timing, key] }
+      saveNotifPref(user.id, next)
+      return next
+    })
+  }, [user])
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  const handleWithdraw = async () => {
+    try {
+      await userApi.deleteMe()
+    } catch {
+      // backend deactivates account; fall through to logout regardless
+    }
+    logout()
+    navigate('/login')
   }
 
   return (
@@ -97,168 +321,136 @@ export default function ProfileEdit() {
       <div className="max-w-sm mx-auto pb-10">
 
         {/* 헤더 */}
-        <div className="flex items-center gap-3 mb-8 pt-2">
-          <button type="button" onClick={() => navigate(-1)} className="text-gray-400 text-[15px]">
-            ←
-          </button>
-          <h1 className="text-[22px] font-extrabold text-gray-900">내 정보 수정</h1>
+        <div className="pt-1 pb-5">
+          <h1 className="text-[18px] font-extrabold text-[#10b981] tracking-tight">내 정보</h1>
         </div>
 
-        {/* 누적 절감 기록 */}
-        {switchSummary && switchSummary.switch_count > 0 && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-4 mb-6">
-            <p className="text-[12px] text-[#0F6E56] font-semibold mb-1">내 절약 기록 (추정)</p>
-            <p className="text-[22px] font-extrabold text-[#0F6E56]">
-              연 약 {Math.round(switchSummary.total_saving_annual / 10000)}만원 절약 중
-            </p>
-            <p className="text-[12px] text-[#0F6E56] opacity-70 mt-0.5">
-              총 {switchSummary.switch_count}건 전환 · 입력값 기준 추정
-            </p>
-          </div>
-        )}
-
-        {/* 필수 입력 */}
-        <div className="space-y-6">
-
-          {/* 통신비 */}
-          <div>
-            <label className="block text-[15px] font-semibold text-gray-700 mb-1">
-              매달 통신비가 얼마인가요?
-            </label>
-            <p className="text-[12px] text-gray-400 mb-2">데이터 요금제 포함 전체 금액</p>
-            <div className="flex items-baseline bg-gray-50 rounded-2xl px-4 py-3.5">
-              <input
-                type="number"
-                inputMode="numeric"
-                value={telecomFee}
-                onChange={(e) => setTelecomFee(e.target.value)}
-                placeholder="0"
-                className="flex-1 text-[22px] font-bold text-gray-900 placeholder:text-gray-300 bg-transparent outline-none"
-              />
-              <span className="text-[15px] text-gray-400 ml-1">만원</span>
-            </div>
-          </div>
-
-          {/* 카드 사용액 */}
-          <div>
-            <label className="block text-[15px] font-semibold text-gray-700 mb-1">
-              한 달 카드로 얼마나 쓰세요?
-            </label>
-            <p className="text-[12px] text-gray-400 mb-2">카드 종류 상관없이 합산 금액</p>
-            <div className="flex items-baseline bg-gray-50 rounded-2xl px-4 py-3.5">
-              <input
-                type="number"
-                inputMode="numeric"
-                value={cardTotal}
-                onChange={(e) => setCardTotal(e.target.value)}
-                placeholder="0"
-                className="flex-1 text-[22px] font-bold text-gray-900 placeholder:text-gray-300 bg-transparent outline-none"
-              />
-              <span className="text-[15px] text-gray-400 ml-1">만원</span>
-            </div>
-          </div>
-
-          {/* 약정 종료일 */}
-          <div>
-            <label className="block text-[15px] font-semibold text-gray-700 mb-1">
-              약정은 언제 끝나나요?
-              <span className="text-[13px] text-gray-400 font-normal ml-1">(선택)</span>
-            </label>
-            <input
-              type="date"
-              value={contractEnd}
-              onChange={(e) => setContractEnd(e.target.value)}
-              className="w-full bg-gray-50 rounded-2xl px-4 py-3.5 text-[15px] text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
+        {/* ① 내 정보 */}
+        <SectionTitle>내 정보</SectionTitle>
+        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 mb-5">
+          <div className="px-4">
+            <EditRow
+              label="이름"
+              value={user?.username ?? null}
+              placeholder="이름을 입력하세요"
+              onSave={async (val) => { await userApi.updateMe({ username: val }) }}
             />
           </div>
-
-          {/* 선택 정보 접기/펼치기 */}
-          <div className="border-t border-gray-100 pt-1">
-            <button
-              type="button"
-              onClick={() => setShowOptional(!showOptional)}
-              className="w-full flex items-center justify-between py-3 text-[14px] font-semibold text-gray-500"
-            >
-              <span>선택 정보 입력하기</span>
-              <span className="text-gray-400 text-[12px]">{showOptional ? '▲ 접기' : '▼ 펼치기'}</span>
-            </button>
-
-            {showOptional && (
-              <div className="space-y-5 pt-2">
-
-                {/* 통신사 */}
-                <div>
-                  <label className="block text-[15px] font-semibold text-gray-700 mb-2">통신사</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {CARRIERS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCarrier(carrier === c ? null : c)}
-                        className={`py-2.5 rounded-xl border text-[13px] font-medium transition-colors ${
-                          carrier === c
-                            ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]'
-                            : 'border-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* OTT */}
-                <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-4">
-                  <div>
-                    <p className="text-[15px] font-semibold text-gray-800">OTT 이용 중</p>
-                    <p className="text-[12px] text-gray-400 mt-0.5">넷플릭스, 디즈니+ 등</p>
-                  </div>
-                  <Toggle on={hasOtt} onToggle={() => setHasOtt(!hasOtt)} />
-                </div>
-
-                {/* 렌탈 */}
-                <div>
-                  <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-4">
-                    <div>
-                      <p className="text-[15px] font-semibold text-gray-800">렌탈 이용 중</p>
-                      <p className="text-[12px] text-gray-400 mt-0.5">정수기, 공기청정기 등</p>
-                    </div>
-                    <Toggle on={hasRental} onToggle={() => setHasRental(!hasRental)} />
-                  </div>
-                  {hasRental && (
-                    <div className="mt-2 px-1">
-                      <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
-                        렌탈 계약 종료일
-                        <span className="text-[12px] text-gray-300 font-normal ml-1">(선택)</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={rentalEnd}
-                        onChange={(e) => setRentalEnd(e.target.value)}
-                        className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-[15px] text-gray-700 outline-none focus:ring-2 focus:ring-[#10b981]"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+          <div className="px-4">
+            <EditRow
+              label="전화번호"
+              value={user?.phone ?? null}
+              placeholder="01012345678"
+              inputType="tel"
+              onSave={async (val) => { await userApi.updateMe({ phone: val || undefined }) }}
+            />
+          </div>
+          <div className="px-4 flex items-center justify-between py-3.5">
+            <span className="text-[15px] text-gray-800">이메일</span>
+            <span className="text-[14px] text-gray-400 truncate max-w-[200px]">{user?.email}</span>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit || saving}
-          className="w-full mt-10 bg-[#10b981] disabled:bg-gray-100 text-white disabled:text-gray-300 py-[18px] rounded-2xl text-[17px] font-bold transition-all active:scale-[0.98]"
-        >
-          {saving ? '저장 중...' : '저장하기'}
-        </button>
+        {/* ② 알림 설정 */}
+        <SectionTitle>알림 설정</SectionTitle>
+        <div className="bg-white rounded-2xl border border-gray-100 mb-5">
+          <div className="px-4 py-3.5">
+            <p className="text-[12px] text-gray-500 font-semibold mb-3">알림 시점</p>
+            <div className="space-y-2.5">
+              {TIMING_OPTIONS.map((opt) => {
+                const checked = notif.timing.includes(opt.key)
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => toggleTiming(opt.key)}
+                    className="w-full flex items-center gap-3 py-1 active:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                      checked ? 'bg-[#10b981] border-[#10b981]' : 'border-gray-200'
+                    }`}>
+                      {checked && (
+                        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                          <path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-[14px] text-gray-700">{opt.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
 
-        {!canSubmit && (
-          <p className="text-center text-[12px] text-gray-400 mt-3">
-            통신비 또는 카드 사용액 중 하나는 입력해주세요
-          </p>
+        {/* 관리자 콘솔 진입 — admin 계정만 */}
+        {user?.is_admin && (
+          <div className="mb-5">
+            <Link
+              to="/admin"
+              className="w-full flex items-center justify-between bg-gray-900 text-white rounded-2xl px-4 py-3.5 active:opacity-80 transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-emerald-400">
+                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+                <span className="text-[15px] font-bold">관리자 콘솔</span>
+              </div>
+              <span className="text-emerald-400 text-[12px] font-semibold">Admin →</span>
+            </Link>
+          </div>
         )}
+
+        {/* ③ 계정 */}
+        <SectionTitle>계정</SectionTitle>
+        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 mb-5">
+
+          {/* 비밀번호 변경 — 이메일 가입 유저만 */}
+          {user?.auth_provider === 'email' && (
+            <div className="px-4">
+              <PasswordChangeSection />
+            </div>
+          )}
+
+          {/* 서비스 이용약관 */}
+          <div className="px-4">
+            <Link
+              to="/terms"
+              className="flex items-center justify-between py-3.5"
+            >
+              <span className="text-[15px] text-gray-800">서비스 이용약관</span>
+              <span className="text-gray-300 text-[18px] leading-none">›</span>
+            </Link>
+          </div>
+
+          {/* 개인정보처리방침 */}
+          <div className="px-4">
+            <Link
+              to="/privacy"
+              className="flex items-center justify-between py-3.5"
+            >
+              <span className="text-[15px] text-gray-800">개인정보처리방침</span>
+              <span className="text-gray-300 text-[18px] leading-none">›</span>
+            </Link>
+          </div>
+
+          {/* 로그아웃 */}
+          <div className="px-4">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center py-3.5 active:bg-gray-50 rounded-lg transition-colors"
+            >
+              <span className="text-[15px] text-red-400">로그아웃</span>
+            </button>
+          </div>
+
+          {/* 회원 탈퇴 */}
+          <div className="px-4">
+            <WithdrawSection onConfirm={handleWithdraw} />
+          </div>
+        </div>
+
       </div>
     </Layout>
   )

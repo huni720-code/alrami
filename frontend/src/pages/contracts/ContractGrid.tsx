@@ -575,6 +575,7 @@ export default function ContractGrid() {
 
   return (
     <DetailPhase
+      key={queue[queueIdx]}
       category={queue[queueIdx]}
       queueIdx={queueIdx}
       queueTotal={queue.length}

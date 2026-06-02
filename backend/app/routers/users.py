@@ -1,13 +1,20 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.schemas.user import UserProfileResponse, UserProfileUpdate, UserResponse, UserUpdate
+from app.schemas.user import (
+    PasswordChangeRequest,
+    UserProfileResponse,
+    UserProfileUpdate,
+    UserResponse,
+    UserUpdate,
+)
 
 router = APIRouter(prefix="/users", tags=["사용자"])
 
@@ -40,6 +47,27 @@ def get_my_profile(
     if profile is None:
         return UserProfileResponse()
     return profile
+
+
+@router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    body: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="현재 비밀번호가 올바르지 않아요.")
+    current_user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.is_active = False
+    db.commit()
 
 
 @router.patch("/me/profile", response_model=UserProfileResponse)

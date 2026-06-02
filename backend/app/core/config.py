@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
     GOOGLE_REDIRECT_URI: Optional[str] = None
 
+    ADMIN_EMAIL: Optional[str] = None
+
     SENDGRID_API_KEY: Optional[str] = None
     FROM_EMAIL: Optional[str] = None
     KAKAO_ALIMTALK_KEY: Optional[str] = None

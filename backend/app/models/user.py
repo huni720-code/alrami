@@ -16,6 +16,7 @@ class User(Base):
     phone = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+    auth_provider = Column(String, default='email', server_default='email', nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     alarms = relationship("Alarm", back_populates="user", cascade="all, delete-orphan")
