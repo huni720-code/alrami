@@ -1,24 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronRight, Plus, TrendingDown } from 'lucide-react'
-import { dashboardApi, contractApi } from '../lib/api'
-import type { DashboardKpi, ContractResponse } from '../lib/api'
+import { Smartphone, Wifi, Tv, Droplets, Plus, X, ChevronRight } from 'lucide-react'
+import { contractApi, dashboardApi } from '../lib/api'
+import type { ContractResponse } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
-import KpiGrid from '../components/kpi/KpiGrid'
-import ContractAlertSection from '../components/kpi/ContractAlertSection'
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-gray-100 rounded-xl ${className}`} />
-}
+// ── utils ──────────────────────────────────────────────────────────────────────
 
-const EMPTY_KPI: DashboardKpi = {
-  month: { year: new Date().getFullYear(), month: new Date().getMonth() + 1 },
-  expense: { total: 0, count: 0 },
-  card_performance: [],
-  card_performance_summary: { total_spent: 0, total_target: 0, cards_achieved: 0, cards_total: 0 },
-  saving: { recommended_monthly: 0, recommended_annual: 0 },
-  contracts: [],
+const CAT_ICON = { 휴대폰: Smartphone, 인터넷: Wifi, TV: Tv, 정수기: Droplets } as const
+
+function CatIcon({ category, size = 18, className = '' }: { category: string; size?: number; className?: string }) {
+  const Icon = (CAT_ICON as Record<string, typeof Smartphone>)[category] ?? Smartphone
+  return <Icon size={size} className={className} />
 }
 
 function ddayLabel(dday: number) {
@@ -27,171 +21,463 @@ function ddayLabel(dday: number) {
   return `D+${Math.abs(dday)}`
 }
 
-function ddayStyle(dday: number) {
-  if (dday <= 0) return 'bg-red-100 text-red-600'
-  if (dday <= 30) return 'bg-orange-100 text-orange-600'
-  if (dday <= 90) return 'bg-amber-50 text-amber-600'
+function ddayBadgeClass(dday: number) {
+  if (dday <= 0) return 'bg-red-500 text-white'
+  if (dday <= 30) return 'bg-orange-500 text-white'
+  if (dday <= 90) return 'bg-amber-400 text-white'
   return 'bg-gray-100 text-gray-500'
 }
 
-export default function Dashboard() {
-  const { user, profile } = useAuth()
-  const navigate = useNavigate()
+function heroGradient(dday: number) {
+  if (dday <= 0) return 'from-red-500 to-rose-600'
+  if (dday <= 30) return 'from-orange-500 to-red-500'
+  if (dday <= 90) return 'from-amber-400 to-orange-400'
+  return 'from-[#10b981] to-[#059669]'
+}
 
-  const [kpi, setKpi] = useState<DashboardKpi | null>(null)
-  const [contracts, setContracts] = useState<ContractResponse[]>([])
-  const [loading, setLoading] = useState(true)
+function fmtYearMonth(d: string) {
+  const [y, m] = d.split('-')
+  return `${y}년 ${parseInt(m)}월`
+}
 
-  const onboardingDone = profile?.onboarding_completed ?? false
+function addMonths(startYM: string, months: number): string {
+  const [y, m] = startYM.split('-').map(Number)
+  const total = (m - 1) + months
+  const ty = y + Math.floor(total / 12)
+  const tm = (total % 12) + 1
+  const lastDay = new Date(ty, tm, 0).getDate()
+  return `${ty}-${String(tm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+}
 
-  useEffect(() => {
-    Promise.all([
-      dashboardApi.kpi().then((r) => setKpi(r.data)).catch(() => setKpi(EMPTY_KPI)),
-      contractApi.list(true).then((r) => setContracts(r.data)).catch(() => setContracts([])),
-    ]).finally(() => setLoading(false))
-  }, [])
+const TERM_OPTS = [12, 24, 36] as const
+type TermOpt = typeof TERM_OPTS[number]
 
-  const displayKpi = kpi ?? EMPTY_KPI
-  const monthLabel = `${displayKpi.month.year}년 ${displayKpi.month.month}월`
+// ── Chip ──────────────────────────────────────────────────────────────────────
 
-  // 약정 정렬: 긴급(dday<=30) 먼저, 최대 3개
-  const topContracts = [...contracts]
-    .sort((a, b) => a.dday - b.dday)
-    .slice(0, 3)
+function Chip({ label, selected, onSelect }: { label: string; selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+        selected ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+// ── Edit bottom sheet ──────────────────────────────────────────────────────────
+
+type EditMode = 'know' | 'unknown'
+
+interface EditSheetProps {
+  contract: ContractResponse
+  onClose: () => void
+  onSaved: (updated: ContractResponse) => void
+  onDeleted: (id: number) => void
+}
+
+function EditSheet({ contract, onClose, onSaved, onDeleted }: EditSheetProps) {
+  const [mode, setMode] = useState<EditMode>(
+    contract.accuracy === 'confirmed' ? 'know' : 'unknown'
+  )
+  const [endDate, setEndDate] = useState(contract.end_date ?? '')
+  const [startMonth, setStartMonth] = useState('')
+  const [termMonths, setTermMonths] = useState<TermOpt | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [delConfirm, setDelConfirm] = useState(false)
+  const [delBusy, setDelBusy] = useState(false)
+
+  const maxMonth = new Date().toISOString().slice(0, 7)
+  const previewEnd = mode === 'unknown' && startMonth && termMonths
+    ? addMonths(startMonth, termMonths)
+    : null
+
+  const canSave =
+    (mode === 'know' && !!endDate) ||
+    (mode === 'unknown' && !!startMonth && !!termMonths)
+
+  const switchMode = (m: EditMode) => {
+    setMode(m)
+    setEndDate(contract.end_date ?? '')
+    setStartMonth('')
+    setTermMonths(null)
+  }
+
+  const handleSave = async () => {
+    if (!canSave || busy) return
+    setBusy(true)
+    try {
+      const payload =
+        mode === 'know'
+          ? { end_date: endDate, accuracy: 'confirmed' as const }
+          : {
+              start_date: `${startMonth}-01`,
+              term_months: termMonths!,
+              accuracy: 'estimated' as const,
+            }
+      const res = await contractApi.update(contract.id, payload)
+      onSaved(res.data)
+    } catch {
+      // keep sheet open for retry
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDelBusy(true)
+    try {
+      await contractApi.remove(contract.id)
+      onDeleted(contract.id)
+    } catch {
+      setDelBusy(false)
+    }
+  }
 
   return (
-    <Layout>
-      <div className="max-w-lg mx-auto pb-10">
+    <>
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl px-6 pt-5 pb-10 max-w-lg mx-auto shadow-2xl">
+        {/* drag handle */}
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
 
-        {/* ── 헤더 ─────────────────────────────────── */}
-        <div className="flex items-center justify-between pt-1 pb-4">
-          <div>
+        {/* header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <CatIcon category={contract.category} size={18} className="text-[#10b981]" />
             <p className="text-[16px] font-bold text-gray-900">
-              안녕하세요, <span className="text-[#10b981]">{user?.username}</span>님
+              {contract.provider}{' '}
+              <span className="text-[14px] text-gray-400 font-normal">{contract.category}</span>
             </p>
-            {!loading && (
-              <p className="text-[12px] text-gray-400 mt-0.5">{monthLabel} 현황</p>
-            )}
           </div>
           <button
             type="button"
-            onClick={() => navigate('/settings')}
-            className="text-[12px] text-gray-400 border border-gray-200 px-2.5 py-1 rounded-lg"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400"
           >
-            정보 수정
+            <X size={20} />
           </button>
         </div>
 
-        {/* ── KPI 그리드: 지출 + 절약액 ─────────────── */}
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
+        {/* mode toggle */}
+        <div className="flex gap-2 mb-5">
+          <Chip label="만료일 알아요" selected={mode === 'know'} onSelect={() => switchMode('know')} />
+          <Chip label="언제인지 몰라요" selected={mode === 'unknown'} onSelect={() => switchMode('unknown')} />
+        </div>
+
+        {/* know mode */}
+        {mode === 'know' && (
+          <div className="mb-5">
+            <p className="text-[12px] text-gray-500 font-semibold mb-2">약정 만료일</p>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full border-2 border-gray-200 focus:border-[#10b981] rounded-2xl px-4 py-4 text-[16px] font-semibold text-gray-900 outline-none transition-colors"
+            />
           </div>
-        ) : (
-          <KpiGrid
-            expense={displayKpi.expense}
-            saving={displayKpi.saving}
-            onboardingDone={onboardingDone}
-            onStartOnboarding={() => navigate('/onboarding/step1')}
-          />
         )}
 
-        {/* ── 약정 Watchdog ─────────────────────────── */}
-        {loading ? (
-          <Skeleton className="h-20 mb-4" />
-        ) : topContracts.length > 0 ? (
-          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Bell size={14} className="text-[#10b981]" />
-                <p className="text-[14px] font-bold text-gray-900">약정 현황</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate('/contracts/onboarding')}
-                className="flex items-center gap-0.5 text-[12px] text-[#10b981] font-medium"
-              >
-                <Plus size={12} /> 추가
-              </button>
-            </div>
-            <div className="space-y-2">
-              {topContracts.map((c) => (
-                <div key={c.id} className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-semibold text-gray-800 truncate">
-                      {c.provider} <span className="text-gray-400 font-normal">{c.category}</span>
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      {c.end_date} 만료
-                      {c.accuracy === 'estimated' && ' · 추정'}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 text-[12px] font-bold px-2.5 py-1 rounded-full ml-2 ${ddayStyle(c.dday)}`}>
-                    {ddayLabel(c.dday)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => navigate('/contracts/onboarding')}
-            className="w-full bg-white rounded-2xl p-4 shadow-sm mb-4 flex items-center justify-between text-left border-2 border-dashed border-gray-200 active:scale-[0.98] transition-all"
-          >
+        {/* unknown mode */}
+        {mode === 'unknown' && (
+          <div className="space-y-4 mb-5">
             <div>
-              <p className="text-[14px] font-bold text-gray-800">약정 만료 감시</p>
-              <p className="text-[12px] text-gray-400 mt-0.5">
-                약정 등록하면 만료 전에 알려드려요
-              </p>
+              <p className="text-[12px] text-gray-500 font-semibold mb-2">가입하신 달</p>
+              <input
+                type="month"
+                value={startMonth}
+                max={maxMonth}
+                onChange={(e) => setStartMonth(e.target.value)}
+                className="w-full border-2 border-gray-200 focus:border-[#10b981] rounded-2xl px-4 py-4 text-[16px] font-semibold text-gray-900 outline-none transition-colors"
+              />
             </div>
-            <ChevronRight size={18} className="text-[#10b981] shrink-0" />
-          </button>
+            <div>
+              <p className="text-[12px] text-gray-500 font-semibold mb-2">약정 기간</p>
+              <div className="flex gap-2">
+                {TERM_OPTS.map((t) => (
+                  <Chip key={t} label={`${t}개월`} selected={termMonths === t} onSelect={() => setTermMonths(t)} />
+                ))}
+              </div>
+            </div>
+            {previewEnd && (
+              <div className="rounded-2xl bg-[#E1F5EE] px-5 py-4">
+                <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">예상 만료일 (추정)</p>
+                <p className="text-[20px] font-extrabold text-[#0F6E56]">{fmtYearMonth(previewEnd)}쯤</p>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* ── 절감 진단 진입 ─────────────────────────── */}
+        {/* save */}
         <button
           type="button"
-          onClick={() => navigate('/hook')}
-          className="w-full bg-gradient-to-r from-[#10b981] to-[#059669] rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all"
+          disabled={!canSave || busy}
+          onClick={handleSave}
+          className="w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-[16px] rounded-2xl text-[16px] font-bold mb-3 transition-all active:scale-[0.98]"
         >
-          <div>
-            <p className="text-[14px] font-bold text-white">통신비·카드 절약 진단</p>
-            <p className="text-[12px] text-white/70 mt-0.5">1분이면 대략 얼마 아끼는지 나와요</p>
-          </div>
-          <TrendingDown size={22} className="text-white/80 shrink-0" />
+          {busy ? '저장 중...' : mode === 'know' ? '저장 (확정)' : '저장 (추정)'}
         </button>
 
-        {/* ── 기존 약정 알림 (레거시 profile 기반) ──── */}
-        {!loading && displayKpi.contracts.length > 0 && contracts.length === 0 && (
-          <ContractAlertSection
-            contracts={displayKpi.contracts}
-            estimatedSaving={displayKpi.saving.recommended_monthly}
-            onSettingsClick={() => navigate('/settings')}
-          />
-        )}
-
-        {/* ── 카드 추천 요약 (1줄) ──────────────────── */}
-        {!loading && onboardingDone && (
+        {/* delete */}
+        {delConfirm ? (
           <button
             type="button"
-            onClick={() => navigate('/recommend')}
-            className="w-full bg-white rounded-2xl px-5 py-3.5 shadow-sm mb-4 flex items-center justify-between active:scale-[0.98] transition-all border border-gray-100"
+            disabled={delBusy}
+            onClick={handleDelete}
+            className="w-full border-2 border-red-400 text-red-500 py-[14px] rounded-2xl text-[15px] font-semibold transition-all active:scale-[0.98]"
           >
-            <div className="text-left">
-              <p className="text-[14px] font-semibold text-gray-800">내 소비 맞춤 카드 추천</p>
-              {displayKpi.saving.recommended_monthly > 0 && (
-                <p className="text-[12px] text-[#10b981] mt-0.5">
-                  월 최대 {displayKpi.saving.recommended_monthly.toLocaleString()}원 절약 가능
-                </p>
-              )}
-            </div>
-            <ChevronRight size={18} className="text-gray-400 shrink-0" />
+            {delBusy ? '삭제 중...' : '정말 삭제할게요'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDelConfirm(true)}
+            className="w-full text-center text-[14px] text-gray-400 py-3 min-h-[44px]"
+          >
+            이 약정 삭제
+          </button>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ── Hero card ─────────────────────────────────────────────────────────────────
+
+function HeroCard({
+  contract,
+  annualSaving,
+  onTap,
+  onCta,
+}: {
+  contract: ContractResponse
+  annualSaving: number
+  onTap: () => void
+  onCta: () => void
+}) {
+  const showCta = contract.dday <= 90
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onTap}
+      onKeyDown={(e) => e.key === 'Enter' && onTap()}
+      className={`w-full rounded-3xl p-6 shadow-md cursor-pointer bg-gradient-to-br ${heroGradient(contract.dday)} active:scale-[0.98] transition-all select-none`}
+    >
+      {/* top row */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <CatIcon category={contract.category} size={14} className="text-white/80" />
+            <span className="text-[12px] text-white/80">{contract.category}</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              contract.accuracy === 'confirmed'
+                ? 'bg-white/20 text-white'
+                : 'bg-white/10 text-yellow-200'
+            }`}>
+              {contract.accuracy === 'confirmed' ? '확정' : '추정'}
+            </span>
+          </div>
+          <p className="text-[26px] font-extrabold text-white leading-tight">{contract.provider}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[11px] text-white/70 mb-0.5">약정 만료</p>
+          <p className="text-[40px] font-black text-white leading-none">{ddayLabel(contract.dday)}</p>
+        </div>
+      </div>
+
+      <p className="text-[12px] text-white/70 mb-4">{fmtYearMonth(contract.end_date)} 만료</p>
+
+      {/* loss diagnosis */}
+      {annualSaving > 0 && (
+        <div className="bg-white/15 rounded-2xl px-4 py-3 mb-4">
+          <p className="text-[11px] text-white/75 mb-0.5">지금 안 바꾸면</p>
+          <p className="text-[20px] font-extrabold text-white">
+            연 약 {Math.round(annualSaving / 10000)}만원 손해
+          </p>
+        </div>
+      )}
+
+      {/* handoff CTA */}
+      {showCta && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onCta() }}
+          className="w-full bg-white/20 active:bg-white/30 text-white font-bold py-3 rounded-2xl text-[14px] transition-all active:scale-[0.98]"
+        >
+          갈아타기 유리한 조건 보기 →
+        </button>
+      )}
+
+      <p className="text-[11px] text-white/40 text-center mt-3">탭해서 날짜 수정</p>
+    </div>
+  )
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+function EmptyState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
+        <Smartphone size={32} className="text-[#10b981]" strokeWidth={1.5} />
+      </div>
+      <p className="text-[18px] font-extrabold text-gray-800 mb-1">약정을 아직 추가하지 않았어요</p>
+      <p className="text-[13px] text-gray-400 mb-8 leading-relaxed">
+        만료 전에 알려드릴게요.<br />등록하고 지킴을 시작해 보세요.
+      </p>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex items-center gap-2 bg-[#10b981] text-white font-bold px-8 py-4 rounded-2xl text-[16px] shadow-md active:scale-[0.98] transition-all"
+      >
+        <Plus size={18} />
+        약정 추가하고 지킴 시작
+      </button>
+    </div>
+  )
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export default function Dashboard() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const [contracts, setContracts] = useState<ContractResponse[]>([])
+  const [annualSaving, setAnnualSaving] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [editTarget, setEditTarget] = useState<ContractResponse | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      contractApi.list(true)
+        .then((r) => setContracts([...r.data].sort((a, b) => a.dday - b.dday)))
+        .catch(() => setContracts([])),
+      dashboardApi.kpi()
+        .then((r) => setAnnualSaving(r.data.saving.recommended_annual))
+        .catch(() => {}),
+    ]).finally(() => setLoading(false))
+  }, [])
+
+  const hero = contracts[0] ?? null
+  const rest = contracts.slice(1)
+
+  const handleSaved = (updated: ContractResponse) => {
+    setContracts((prev) =>
+      [...prev.map((c) => (c.id === updated.id ? updated : c))].sort((a, b) => a.dday - b.dday)
+    )
+    setEditTarget(null)
+  }
+
+  const handleDeleted = (id: number) => {
+    setContracts((prev) => prev.filter((c) => c.id !== id))
+    setEditTarget(null)
+  }
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-8 h-8 rounded-full border-4 border-gray-100 border-t-[#10b981] animate-spin" />
+        </div>
+      </Layout>
+    )
+  }
+
+  return (
+    <Layout>
+      <div className="max-w-sm mx-auto pb-6">
+
+        {/* header */}
+        <div className="flex items-center justify-between pt-1 pb-5">
+          <p className="text-[18px] font-extrabold text-[#10b981] tracking-tight">만기톡</p>
+          <button
+            type="button"
+            onClick={() => navigate('/settings')}
+            className="text-[12px] text-gray-400 border border-gray-200 px-3 py-1.5 rounded-xl"
+          >
+            {user?.username ?? '내 정보'}
+          </button>
+        </div>
+
+        {/* hero / empty */}
+        {hero ? (
+          <HeroCard
+            contract={hero}
+            annualSaving={annualSaving}
+            onTap={() => setEditTarget(hero)}
+            onCta={() => navigate('/hook')}
+          />
+        ) : (
+          <EmptyState onAdd={() => navigate('/contracts/grid')} />
+        )}
+
+        {/* rest list */}
+        {rest.length > 0 && (
+          <div className="mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
+            {rest.map((c, i) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setEditTarget(c)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 transition-colors ${
+                  i > 0 ? 'border-t border-gray-50' : ''
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+                  <CatIcon category={c.category} size={17} className="text-gray-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold text-gray-800 truncate leading-tight">
+                    {c.provider}{' '}
+                    <span className="text-gray-400 font-normal">{c.category}</span>
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      c.accuracy === 'confirmed'
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-amber-50 text-amber-500'
+                    }`}>
+                      {c.accuracy === 'confirmed' ? '확정' : '추정'}
+                    </span>
+                    <span className="text-[11px] text-gray-400">{fmtYearMonth(c.end_date)} 만료</span>
+                  </div>
+                </div>
+                <span className={`shrink-0 text-[12px] font-bold px-2.5 py-1 rounded-full ${ddayBadgeClass(c.dday)}`}>
+                  {ddayLabel(c.dday)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* add more */}
+        {contracts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => navigate('/contracts/grid')}
+            className="w-full mt-3 flex items-center justify-center gap-1.5 text-[13px] text-[#10b981] font-semibold py-3 min-h-[44px]"
+          >
+            <Plus size={15} /> 약정 추가
           </button>
         )}
 
       </div>
+
+      {/* edit bottom sheet */}
+      {editTarget && (
+        <EditSheet
+          contract={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
+      )}
     </Layout>
   )
 }
