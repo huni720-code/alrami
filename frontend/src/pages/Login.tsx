@@ -47,10 +47,12 @@ export default function Login() {
   const fromOnboarding = searchParams.get('from') === 'onboarding'
 
   const afterLogin = async () => {
-    await applyPendingContract()
+    const hadContract = await applyPendingContract()
     const hadPending = await applyPendingProfile()
     if (hadPending) {
       navigate('/onboarding/complete')
+    } else if (hadContract) {
+      navigate('/contracts/grid')
     } else if (fromOnboarding) {
       navigate('/onboarding/step3')
     } else {
@@ -116,7 +118,7 @@ export default function Login() {
           ) : (
             <>
               <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight mb-2">
-                다시 만나서 반가워요
+                알림 받으려면 로그인
               </h1>
               <p className="text-[16px] text-gray-400">약정 만료일을 대신 지켜드릴게요</p>
             </>

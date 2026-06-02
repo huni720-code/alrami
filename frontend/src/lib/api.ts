@@ -90,6 +90,7 @@ export interface User {
   id: number
   email: string
   username: string
+  phone: string | null
   is_active: boolean
   is_admin: boolean
   created_at: string
@@ -319,6 +320,7 @@ export const recommendationApi = {
 export const userApi = {
   getProfile: () => api.get<UserProfile>('/users/me/profile'),
   updateProfile: (data: UserProfileUpdate) => api.patch<UserProfile>('/users/me/profile', data),
+  updateMe: (data: { phone?: string; username?: string }) => api.patch<User>('/users/me', data),
 }
 
 // MyCards types

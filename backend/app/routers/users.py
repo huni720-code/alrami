@@ -7,13 +7,27 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.schemas.user import UserProfileResponse, UserProfileUpdate, UserResponse
+from app.schemas.user import UserProfileResponse, UserProfileUpdate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["사용자"])
 
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    body: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

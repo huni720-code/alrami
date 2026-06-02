@@ -17,6 +17,7 @@ import Complete from './pages/onboarding/Complete'
 import ProfileEdit from './pages/ProfileEdit'
 import ExpenseImport from './pages/ExpenseImport'
 import ContractOnboarding from './pages/contracts/ContractOnboarding'
+import ContractGrid from './pages/contracts/ContractGrid'
 import Hook from './pages/Hook'
 import Coach from './pages/Coach'
 import Recommend from './pages/Recommend'
@@ -68,6 +69,7 @@ export default function App() {
       <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
       <Route path="/contracts/onboarding" element={<ProtectedRoute><ContractOnboarding /></ProtectedRoute>} />
+      <Route path="/contracts/grid" element={<ProtectedRoute><ContractGrid /></ProtectedRoute>} />
 
       {/* 관리자 콘솔 (중첩 라우트) */}
       <Route
