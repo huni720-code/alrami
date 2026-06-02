@@ -453,6 +453,39 @@ export const contractApi = {
     }),
 }
 
+// Switch Logs (전환기록)
+export interface SwitchLogCreate {
+  contract_id?: number
+  category: string
+  provider: string
+  switched: boolean
+  estimated_saving_annual?: number
+}
+
+export interface SwitchLogResponse {
+  id: number
+  contract_id: number | null
+  category: string
+  provider: string
+  switched: boolean
+  estimated_saving_annual: number | null
+  switched_at: string
+}
+
+export interface SwitchLogSummary {
+  switch_count: number
+  total_saving_annual: number
+}
+
+export const switchLogApi = {
+  create: (data: SwitchLogCreate) =>
+    api.post<SwitchLogResponse>('/switch-logs', data),
+  list: () =>
+    api.get<SwitchLogResponse[]>('/switch-logs'),
+  summary: () =>
+    api.get<SwitchLogSummary>('/switch-logs/summary'),
+}
+
 export const myCardsApi = {
   list: () => api.get<MyCard[]>('/my-cards'),
   cardCatalog: () => api.get<CardCatalogItem[]>('/my-cards/card-catalog'),

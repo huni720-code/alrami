@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Smartphone, Wifi, Tv, Droplets, Plus, X } from 'lucide-react'
-import { contractApi, dashboardApi } from '../lib/api'
-import type { ContractResponse } from '../lib/api'
+import { Smartphone, Wifi, Tv, Droplets, Plus, X, CheckCircle } from 'lucide-react'
+import { contractApi, dashboardApi, switchLogApi } from '../lib/api'
+import type { ContractResponse, SwitchLogSummary } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 
@@ -355,6 +355,101 @@ function HeroCard({
   )
 }
 
+// ── "갈아탔어요?" 인앱 프롬프트 ──────────────────────────────────────────────
+
+function SwitchPrompt({
+  contract,
+  estimatedSavingAnnual,
+  onAnswered,
+}: {
+  contract: ContractResponse
+  estimatedSavingAnnual: number
+  onAnswered: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState<'yes' | 'no' | null>(null)
+
+  const answer = async (switched: boolean) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await switchLogApi.create({
+        contract_id: contract.id,
+        category: contract.category,
+        provider: contract.provider,
+        switched,
+        estimated_saving_annual: switched ? estimatedSavingAnnual || undefined : undefined,
+      })
+      setDone(switched ? 'yes' : 'no')
+      setTimeout(onAnswered, 1200)
+    } catch {
+      setBusy(false)
+    }
+  }
+
+  if (done === 'yes') {
+    return (
+      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 mt-4">
+        <CheckCircle size={16} className="text-[#10b981] shrink-0" />
+        <p className="text-[13px] text-[#0F6E56] font-semibold">절감액이 적립됐어요!</p>
+      </div>
+    )
+  }
+
+  if (done === 'no') {
+    return (
+      <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 mt-4">
+        <p className="text-[13px] text-gray-500">알겠어요. 다음 기회에 알려드릴게요.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl px-4 py-4 mt-4 shadow-sm">
+      <p className="text-[13px] font-bold text-gray-800 mb-0.5">
+        {contract.provider} {contract.category} 약정이 만료됐어요
+      </p>
+      <p className="text-[12px] text-gray-400 mb-3">갈아타셨나요?</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => answer(true)}
+          className="flex-1 bg-[#10b981] disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-[14px] transition-all active:scale-[0.97]"
+        >
+          예, 갈아탔어요
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => answer(false)}
+          className="flex-1 border border-gray-200 text-gray-500 font-semibold py-2.5 rounded-xl text-[14px] transition-all active:scale-[0.97]"
+        >
+          아니오
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── 누적 절감 뱃지 ────────────────────────────────────────────────────────────
+
+function SavingsBadge({ summary }: { summary: SwitchLogSummary }) {
+  if (summary.switch_count === 0) return null
+  return (
+    <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 mt-4">
+      <CheckCircle size={18} className="text-[#10b981] shrink-0" />
+      <div>
+        <p className="text-[12px] text-[#0F6E56] font-semibold">누적 절감 (추정)</p>
+        <p className="text-[16px] font-extrabold text-[#0F6E56]">
+          연 약 {Math.round(summary.total_saving_annual / 10000)}만원{' '}
+          <span className="text-[12px] font-normal opacity-70">· {summary.switch_count}건 전환</span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
@@ -389,8 +484,10 @@ export default function Dashboard() {
   const [annualSaving, setAnnualSaving] = useState(0)
   const [loading, setLoading] = useState(true)
   const [editTarget, setEditTarget] = useState<ContractResponse | null>(null)
+  const [answeredIds, setAnsweredIds] = useState<Set<number>>(new Set())
+  const [switchSummary, setSwitchSummary] = useState<SwitchLogSummary | null>(null)
 
-  useEffect(() => {
+  const loadData = () => {
     Promise.all([
       contractApi.list(true)
         .then((r) => setContracts([...r.data].sort((a, b) => a.dday - b.dday)))
@@ -398,11 +495,24 @@ export default function Dashboard() {
       dashboardApi.kpi()
         .then((r) => setAnnualSaving(r.data.saving.recommended_annual))
         .catch(() => {}),
+      switchLogApi.list()
+        .then((r) => setAnsweredIds(new Set(r.data.map((l) => l.contract_id).filter(Boolean) as number[])))
+        .catch(() => {}),
+      switchLogApi.summary()
+        .then((r) => setSwitchSummary(r.data))
+        .catch(() => {}),
     ]).finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadData() }, [])
 
   const hero = contracts[0] ?? null
   const rest = contracts.slice(1)
+
+  // 만료된(dday <= 0) 통신 약정 중 아직 응답 안 한 첫 번째
+  const pendingSwitch = contracts.find(
+    (c) => c.dday <= 0 && c.dday >= -60 && TELECOM_CATS.has(c.category) && !answeredIds.has(c.id)
+  ) ?? null
 
   const handleSaved = (updated: ContractResponse) => {
     setContracts((prev) =>
@@ -414,6 +524,10 @@ export default function Dashboard() {
   const handleDeleted = (id: number) => {
     setContracts((prev) => prev.filter((c) => c.id !== id))
     setEditTarget(null)
+  }
+
+  const handleSwitchAnswered = () => {
+    loadData()
   }
 
   if (loading) {
@@ -452,6 +566,18 @@ export default function Dashboard() {
         ) : (
           <EmptyState onAdd={() => navigate('/contracts/grid')} />
         )}
+
+        {/* 갈아탔어요? 인앱 프롬프트 */}
+        {pendingSwitch && (
+          <SwitchPrompt
+            contract={pendingSwitch}
+            estimatedSavingAnnual={annualSaving}
+            onAnswered={handleSwitchAnswered}
+          />
+        )}
+
+        {/* 누적 절감 뱃지 */}
+        {switchSummary && <SavingsBadge summary={switchSummary} />}
 
         {/* rest list */}
         {rest.length > 0 && (

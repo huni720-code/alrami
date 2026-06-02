@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { userApi } from '../lib/api'
+import { userApi, switchLogApi } from '../lib/api'
+import type { SwitchLogSummary } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 
@@ -38,6 +39,11 @@ export default function ProfileEdit() {
 
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [switchSummary, setSwitchSummary] = useState<SwitchLogSummary | null>(null)
+
+  useEffect(() => {
+    switchLogApi.summary().then((r) => setSwitchSummary(r.data)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!profile) return
@@ -97,6 +103,19 @@ export default function ProfileEdit() {
           </button>
           <h1 className="text-[22px] font-extrabold text-gray-900">내 정보 수정</h1>
         </div>
+
+        {/* 누적 절감 기록 */}
+        {switchSummary && switchSummary.switch_count > 0 && (
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-4 mb-6">
+            <p className="text-[12px] text-[#0F6E56] font-semibold mb-1">내 절약 기록 (추정)</p>
+            <p className="text-[22px] font-extrabold text-[#0F6E56]">
+              연 약 {Math.round(switchSummary.total_saving_annual / 10000)}만원 절약 중
+            </p>
+            <p className="text-[12px] text-[#0F6E56] opacity-70 mt-0.5">
+              총 {switchSummary.switch_count}건 전환 · 입력값 기준 추정
+            </p>
+          </div>
+        )}
 
         {/* 필수 입력 */}
         <div className="space-y-6">

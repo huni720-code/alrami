@@ -10,10 +10,11 @@ from app.models.user_card import UserCard, CardTransaction
 from app.models.user_consent import UserConsent
 from app.models.contract import Contract
 from app.models.provider_info import ProviderInfo
+from app.models.contract_switch_log import ContractSwitchLog
 
 __all__ = [
     "User", "Alarm", "Expense", "Card", "CardBenefit", "TelecomPlan",
     "CrawlTask", "AdminLog", "SavingBenchmark", "UserProfile",
     "UserCard", "CardTransaction", "UserConsent",
-    "Contract", "ProviderInfo",
+    "Contract", "ProviderInfo", "ContractSwitchLog",
 ]

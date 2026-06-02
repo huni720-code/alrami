@@ -332,15 +332,119 @@ def job_monthly_report() -> None:
 
 
 # ──────────────────────────────────────────────────────────────
+# 작업 4: 매일 오전 9:30 — 약정 만료 7일 후 "갈아탔어요?" 후속
+# ──────────────────────────────────────────────────────────────
+#
+# 대상: is_active=True 인 통신(휴대폰/인터넷/TV) 약정 중 end_date == 오늘 - 7일
+# 조건: 해당 contract_id 에 대한 switch_log 가 없는 경우에만 발송
+# 채널: 카카오 알림톡 → 키 없으면 이메일 fallback
+
+_TELECOM_CATS = {"휴대폰", "인터넷", "TV"}
+
+
+def job_switch_followup() -> None:
+    from datetime import timedelta  # noqa: PLC0415
+    from app.models.contract_switch_log import ContractSwitchLog  # noqa: PLC0415
+
+    today = date.today()
+    target_date = today - timedelta(days=7)
+    db = SessionLocal()
+    try:
+        contracts = (
+            db.query(Contract)
+            .filter(
+                Contract.end_date == target_date,
+                Contract.is_active == True,  # noqa: E712
+            )
+            .all()
+        )
+
+        for c in contracts:
+            if c.category not in _TELECOM_CATS:
+                continue
+
+            already_answered = (
+                db.query(ContractSwitchLog)
+                .filter(ContractSwitchLog.contract_id == c.id)
+                .first()
+            )
+            if already_answered:
+                continue
+
+            action = "alarm.switch_followup"
+            if _already_notified(db, action, c.id, target_type="contract"):
+                logger.info("[SCHEDULER] switch_followup 중복 건너뜀 contract_id=%s", c.id)
+                continue
+
+            user = (
+                db.query(User)
+                .filter(User.id == c.user_id, User.is_active == True)  # noqa: E712
+                .first()
+            )
+            if not user:
+                continue
+
+            recipient_phone = getattr(user, "phone", None) or user.email
+            variables = {
+                "username": user.username,
+                "category": c.category,
+                "provider": c.provider,
+                "link": f"{settings.SERVICE_URL}/dashboard",
+            }
+
+            _run_async(
+                send_kakao_alimtalk(
+                    recipient_phone,
+                    settings.KAKAO_SWITCH_FOLLOWUP_TEMPLATE_CODE,
+                    variables,
+                )
+            )
+
+            if not settings.KAKAO_ALIMTALK_KEY:
+                subject = f"[만기톡] {c.provider} {c.category} — 갈아탔어요?"
+                body_html = (
+                    f"<h2>안녕하세요, {user.username}님!</h2>"
+                    f"<p>{c.provider} {c.category} 약정이 만료된 지 7일이 지났어요.</p>"
+                    f"<p>혹시 이미 갈아타셨나요? 앱에서 알려주시면 얼마나 아꼈는지 기록해드릴게요.</p>"
+                    f'<p><a href="{settings.SERVICE_URL}/dashboard">갈아탔어요 응답하기 →</a></p>'
+                )
+                _run_async(send_email(user.email, subject, body_html))
+
+            _record_log(
+                db,
+                action,
+                target_id=c.id,
+                detail={
+                    "user_id": user.id,
+                    "category": c.category,
+                    "provider": c.provider,
+                    "end_date": str(c.end_date),
+                },
+                target_type="contract",
+                performed_by=user.id,
+            )
+            logger.info(
+                "[SCHEDULER] switch_followup 발송 user_id=%s contract_id=%s",
+                user.id, c.id,
+            )
+
+    except Exception as exc:
+        logger.exception("[SCHEDULER] job_switch_followup 오류: %s", exc)
+    finally:
+        db.close()
+
+
+# ──────────────────────────────────────────────────────────────
 # 스케줄러 시작 / 종료
 # ──────────────────────────────────────────────────────────────
 
 def start_scheduler() -> None:
-    _scheduler.add_job(job_contract_dday,    "cron", hour=9,  minute=0, id="contract_dday")
-    _scheduler.add_job(job_card_performance, "cron", day=25,  hour=9,  minute=0, id="card_performance")
-    _scheduler.add_job(job_monthly_report,   "cron", day=1,   hour=8,  minute=0, id="monthly_report")
+    _scheduler.add_job(job_contract_dday,    "cron", hour=9,  minute=0,  id="contract_dday")
+    _scheduler.add_job(job_card_performance, "cron", day=25,  hour=9,   minute=0,  id="card_performance")
+    _scheduler.add_job(job_monthly_report,   "cron", day=1,   hour=8,   minute=0,  id="monthly_report")
+    _scheduler.add_job(job_switch_followup,  "cron", hour=9,  minute=30, id="switch_followup")
     _scheduler.start()
-    logger.info("[SCHEDULER] 알림 스케줄러 시작됨 (작업 3개)")
+    logger.info("[SCHEDULER] 알림 스케줄러 시작됨 (작업 4개)")
 
 
 def stop_scheduler() -> None:
