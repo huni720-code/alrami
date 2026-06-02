@@ -439,12 +439,13 @@ def job_switch_followup() -> None:
 # ──────────────────────────────────────────────────────────────
 
 def start_scheduler() -> None:
-    _scheduler.add_job(job_contract_dday,    "cron", hour=9,  minute=0,  id="contract_dday")
-    _scheduler.add_job(job_card_performance, "cron", day=25,  hour=9,   minute=0,  id="card_performance")
-    _scheduler.add_job(job_monthly_report,   "cron", day=1,   hour=8,   minute=0,  id="monthly_report")
-    _scheduler.add_job(job_switch_followup,  "cron", hour=9,  minute=30, id="switch_followup")
+    _scheduler.add_job(job_contract_dday,   "cron", hour=9, minute=0,  id="contract_dday")
+    _scheduler.add_job(job_switch_followup, "cron", hour=9, minute=30, id="switch_followup")
+    # FROZEN: card_performance and monthly_report jobs suspended (code preserved)
+    # _scheduler.add_job(job_card_performance, "cron", day=25, hour=9, minute=0, id="card_performance")
+    # _scheduler.add_job(job_monthly_report,   "cron", day=1,  hour=8, minute=0, id="monthly_report")
     _scheduler.start()
-    logger.info("[SCHEDULER] 알림 스케줄러 시작됨 (작업 4개)")
+    logger.info("[SCHEDULER] 알림 스케줄러 시작됨 (작업 2개: contract_dday, switch_followup)")
 
 
 def stop_scheduler() -> None:

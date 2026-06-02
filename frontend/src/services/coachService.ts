@@ -6,6 +6,7 @@ function fmt(n: number) {
 }
 
 // ── 인텐트 감지 ───────────────────────────────────────────────
+// FROZEN intents (card_performance, card_strategy, savings, plan, summary): kept in code, not routed
 type Intent =
   | 'card_performance'
   | 'card_strategy'
@@ -19,14 +20,9 @@ type Intent =
 
 function detectIntent(text: string): Intent {
   const t = text
-  if (/실적.*부족|부족.*실적|실적.*얼마|얼마.*부족|카드.*실적|실적/.test(t)) return 'card_performance'
-  if (/어떤.*카드|카드.*먼저|먼저.*써|써야/.test(t)) return 'card_strategy'
-  if (/절약|줄었|왜.*줄|얼마.*아낄|아낄/.test(t)) return 'savings'
   if (/통신사|통신비|요금제|바꾸|이득.*통신|통신.*이득/.test(t)) return 'telecom'
   if (/렌탈|유지.*좋|반납|재계약/.test(t)) return 'rental'
   if (/약정|종료/.test(t)) return 'contract'
-  if (/계획|다음 달|예산|소비 계획|짜줘/.test(t)) return 'plan'
-  if (/요약|정리|현황|알려줘/.test(t)) return 'summary'
   return 'general'
 }
 
@@ -212,7 +208,7 @@ function answerSummary(kpi: DashboardKpi): string {
 }
 
 function answerGeneral(): string {
-  return '만기톡 절약 코치입니다.\n아래 주제에 대해 질문해보세요:\n\n• 카드 실적 및 부족 금액\n• 어떤 카드를 먼저 써야 할지\n• 절약액 및 소비 현황\n• 통신사 변경 여부\n• 렌탈 유지 또는 해지\n• 이번 달 소비 계획'
+  return '만기톡 절약 코치입니다.\n아래 주제에 대해 질문해보세요:\n\n• 통신사 변경 여부\n• 렌탈 유지 또는 해지\n• 약정 종료 일정 확인'
 }
 
 // ── 공개 API ─────────────────────────────────────────────────
@@ -234,14 +230,9 @@ export function answerQuestion(question: string, ctx: CoachContext): string {
   const { kpi } = ctx
 
   switch (intent) {
-    case 'card_performance': return answerCardPerformance(kpi)
-    case 'card_strategy':    return answerCardStrategy(kpi)
-    case 'savings':          return answerSavings(kpi)
-    case 'telecom':          return answerTelecom(kpi)
-    case 'rental':           return answerRental(kpi)
-    case 'contract':         return answerContract(kpi)
-    case 'plan':             return answerPlan(kpi)
-    case 'summary':          return answerSummary(kpi)
-    default:                 return answerGeneral()
+    case 'telecom':  return answerTelecom(kpi)
+    case 'rental':   return answerRental(kpi)
+    case 'contract': return answerContract(kpi)
+    default:         return answerGeneral()
   }
 }

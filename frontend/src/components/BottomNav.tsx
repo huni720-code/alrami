@@ -13,17 +13,6 @@ const TABS = [
     ),
   },
   {
-    to: '/my-cards',
-    label: '카드',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#10b981' : '#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="5" width="20" height="14" rx="2" />
-        <path d="M2 10h20" />
-      </svg>
-    ),
-  },
-  {
     to: '/settings',
     label: '내 정보',
     icon: (active: boolean) => (

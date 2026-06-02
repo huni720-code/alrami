@@ -40,7 +40,7 @@ export default function Coach() {
           </button>
           <div>
             <h1 className="text-[20px] font-extrabold text-gray-900">만기톡 코치</h1>
-            <p className="text-[11px] text-gray-400 mt-0.5">소비 데이터 기반 절약 조언</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">약정·통신·렌탈 절약 조언</p>
           </div>
           <span className="ml-auto text-[11px] text-[#10b981] bg-emerald-50 px-2.5 py-1 rounded-full font-medium">
             규칙 기반

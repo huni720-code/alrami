@@ -7,6 +7,9 @@ import Layout from '../components/Layout'
 
 function fmt(n: number) { return n.toLocaleString() }
 
+// FROZEN: card portfolio recommendation suspended (code preserved below)
+const _FROZEN = true
+
 export default function Recommend() {
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -15,7 +18,7 @@ export default function Recommend() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!profile?.onboarding_completed) {
+    if (_FROZEN || !profile?.onboarding_completed) {
       setLoading(false)
       return
     }
@@ -24,6 +27,25 @@ export default function Recommend() {
       .catch((e) => setError(e?.response?.status === 422 ? 'onboarding' : 'error'))
       .finally(() => setLoading(false))
   }, [profile?.onboarding_completed])
+
+  if (_FROZEN) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <p className="text-4xl mb-4">🔒</p>
+          <p className="text-[17px] font-bold text-gray-800 mb-2">준비 중이에요</p>
+          <p className="text-[14px] text-gray-500 mb-6">카드 추천 기능은 곧 업데이트될 예정이에요</p>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className="bg-[#10b981] text-white font-bold px-8 py-3.5 rounded-2xl text-[15px]"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
+      </Layout>
+    )
+  }
 
   /* ── 온보딩 미완료 ── */
   if (!loading && !profile?.onboarding_completed) {

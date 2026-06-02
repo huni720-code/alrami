@@ -1,12 +1,7 @@
 const CHIPS: { label: string; question: string }[] = [
-  { label: '이번 달 현황',   question: '이번 달 현황 요약해줘' },
-  { label: '카드 사용 순서', question: '어떤 카드를 먼저 써야 해?' },
-  { label: '카드 실적 확인', question: '카드 실적이 얼마나 부족해?' },
-  { label: '절약액 확인',    question: '절약액이 얼마야?' },
   { label: '통신사 교체',    question: '통신사 바꾸는 게 이득이야?' },
   { label: '렌탈 유지 여부', question: '렌탈 유지하는 게 좋을까?' },
   { label: '약정 종료일',    question: '약정 종료 언제야?' },
-  { label: '다음 달 계획',   question: '다음 달 소비 계획 짜줘' },
 ]
 
 interface Props {
