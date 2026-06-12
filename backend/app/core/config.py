@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     SENDGRID_API_KEY: Optional[str] = None
     FROM_EMAIL: Optional[str] = None
+    # 인증코드 SMS 발송 키(솔라피 등) — 미설정 시 [SMS-DEV] 로그만
+    SMS_API_KEY: Optional[str] = None
     KAKAO_ALIMTALK_KEY: Optional[str] = None
     KAKAO_SENDER_KEY: Optional[str] = None
     # 카카오 알림톡 템플릿 코드 — 채널 개설·템플릿 사전심사 후 실제 코드로 교체

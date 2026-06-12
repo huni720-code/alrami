@@ -17,7 +17,28 @@ logger = logging.getLogger(__name__)
 _scheduler = BackgroundScheduler(timezone="Asia/Seoul")
 
 # 약정 D-day 트리거 기준 (일)
-CONTRACT_DDAY_TRIGGERS = (90, 30, 7)
+# D-30 / D-7 = 만료 임박, D-Day(0) = 만료 당일, D+7(-7) = 만료 후 7일(갈아타기 골든타임)
+CONTRACT_DDAY_TRIGGERS = (30, 7, 0, -7)
+
+# 알림 시점 사용자 설정이 없을 때의 기본값 (UserProfile.alarm_days 기본과 동일)
+DEFAULT_ALARM_DAYS = [30, 7, 0, -7]
+
+# 통신 카테고리 (휴대폰/인터넷/TV) — D+7 메시지 분기용
+_TELECOM_CATS = {"휴대폰", "인터넷", "TV"}
+
+
+def _contract_dday_message(category: str, delta: int) -> str:
+    """D-day 카테고리별 정보성 본문. 링크/금액 없음(정보성 유지)."""
+    if delta < 0:
+        if category in _TELECOM_CATS:
+            return "약정이 끝났어요. 지금이 바꾸기 가장 좋은 시기예요"
+        return "의무기간이 끝났어요. 소유권 이전·해지를 확인해 보세요"
+    if delta == 0:
+        if category in _TELECOM_CATS:
+            return "오늘 약정이 만료돼요. 그대로 두면 혜택 없이 이어져요"
+        return "오늘 의무기간이 끝나요"
+    # D-30 / D-7 임박 안내
+    return f"약정 만료가 D-{delta}일 남았어요. 갈아타기 좋은 조건을 확인해 보세요"
 
 
 # ──────────────────────────────────────────────────────────────
@@ -63,15 +84,52 @@ def _run_async(coro) -> None:
     asyncio.run(coro)
 
 
+def _user_alarm_days(db, user_id: int) -> list[int]:
+    """사용자가 켜둔 알림 시점(delta 리스트)을 반환.
+    설정(UserProfile.alarm_days)이 없거나 파싱 실패 시 기본값.
+    """
+    import json  # noqa: PLC0415
+
+    profile = (
+        db.query(UserProfile)
+        .filter(UserProfile.user_id == user_id)
+        .first()
+    )
+    raw = getattr(profile, "alarm_days", None) if profile else None
+    if not raw:
+        return DEFAULT_ALARM_DAYS
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError):
+        return DEFAULT_ALARM_DAYS
+    if not isinstance(parsed, list) or not all(isinstance(x, int) for x in parsed):
+        return DEFAULT_ALARM_DAYS
+    return parsed
+
+
+def _dday_label(delta: int) -> str:
+    """delta 일수를 D-day 라벨로. 음수(만료 후)는 D+N."""
+    if delta > 0:
+        return f"D-{delta}"
+    if delta == 0:
+        return "D-Day"
+    return f"D+{abs(delta)}"
+
+
 def _build_contract_email(username: str, contract: Contract, delta: int) -> str:
-    urgency = "긴급" if delta <= 7 else "안내"
+    expired = delta < 0
+    urgency = "안내" if (expired or delta > 7) else "긴급"
+    when = "만료됐어요" if expired else "만료됩니다"
+    headline = (
+        f"{contract.provider} {contract.category} 약정이 "
+        f"{contract.end_date}에 {when} ({_dday_label(delta)})."
+    )
+    body = _contract_dday_message(contract.category, delta)
     return (
         f"<h2>안녕하세요, {username}님!</h2>"
-        f"<p>[{urgency}] {contract.provider} {contract.category} 약정이 "
-        f"<strong>{contract.end_date}</strong>에 만료됩니다. "
-        f"<strong>D-{delta}일</strong> 남았습니다.</p>"
-        f"<p>지금 만기톡에서 갈아타기 유리한 조건을 확인해 보세요.</p>"
-        f'<p><a href="{settings.SERVICE_URL}/contracts/onboarding">약정 확인하기 →</a></p>'
+        f"<p>[{urgency}] {headline}</p>"
+        f"<p>{body}</p>"
+        f'<p><a href="{settings.SERVICE_URL}/dashboard">약정 확인하기 →</a></p>'
     )
 
 
@@ -80,17 +138,16 @@ def _build_contract_email(username: str, contract: Contract, delta: int) -> str:
 # ──────────────────────────────────────────────────────────────
 #
 # 대상: Contract 모델의 is_active=True 약정 전체
-# 트리거: end_date 기준 D-90 / D-30 / D-7
+# 트리거: end_date 기준 D-30 / D-7 / D-Day / D+7 (사용자별 alarm_days 설정으로 on/off)
 # 채널: 카카오 알림톡(정보성) → 키 없으면 [KAKAO-DEV] 로그
-#       알림톡 키 없을 때만 이메일 fallback
+#       알림톡 키 없을 때만 이메일 DEV fallback
 # 중복 방지: (action=alarm.contract_dday_dN, target_type=contract, target_id=contract.id) 일 단위
 #
 # ※ 실발송 전 사전 작업 필요:
 #   1. 카카오톡 채널 개설
 #   2. 발신프로필(Sender Profile) 등록
 #   3. 알림톡 템플릿 사전심사 (KAKAO_CONTRACT_TEMPLATE_CODE 교체)
-#   4. 수신자 phone 필드: 현재 User 모델에 phone 없음 → 별도 마이그레이션 필요
-#      (키 미설정 dev 모드에서는 user.email을 수신자 식별자로 기록)
+#   (user.phone 필드는 구현됨 — 미입력 시 dev 모드에서 email을 수신자 식별자로 기록)
 
 def job_contract_dday() -> None:
     today = date.today()
@@ -115,6 +172,10 @@ def job_contract_dday() -> None:
             if not user:
                 continue
 
+            # 사용자별 알림 시점 필터: 이 delta를 끄면 건너뜀 (설정 없으면 기본값)
+            if delta not in _user_alarm_days(db, user.id):
+                continue
+
             action = f"alarm.contract_dday_d{delta}"
             if _already_notified(db, action, c.id, target_type="contract"):
                 logger.info(
@@ -129,13 +190,15 @@ def job_contract_dday() -> None:
                 "category": c.category,
                 "provider": c.provider,
                 "end_date": end_date_fmt,
-                "dday": str(delta),
-                "link": f"{settings.SERVICE_URL}/contracts/onboarding",
+                "dday": _dday_label(delta),
+                # 카테고리별 정보성 본문 (링크/금액 없음)
+                "message": _contract_dday_message(c.category, delta),
+                "link": f"{settings.SERVICE_URL}/dashboard",
             }
 
             # 1순위: 카카오 알림톡 (정보성 — 친구톡 아님)
             # 실발송 시 recipient_phone은 user.phone 필드(미구현)로 교체 필요
-            recipient_phone = getattr(user, "phone", None) or user.email
+            recipient_phone = getattr(user, "phone", None) or user.email or f"user#{user.id}"
             _run_async(
                 send_kakao_alimtalk(
                     recipient_phone,
@@ -144,9 +207,16 @@ def job_contract_dday() -> None:
                 )
             )
 
-            # 2순위: 이메일 fallback — 알림톡 키 없을 때만
-            if not settings.KAKAO_ALIMTALK_KEY:
-                subject = f"[만기톡] {c.category} 약정 만료 D-{delta}일 안내"
+            # 2순위: 이메일 — DEV FALLBACK ONLY (알림톡 키 없을 때만).
+            # 사용자 노출 알림 채널은 카카오 알림톡 단일. 이메일은 채널 아님.
+            # 전화번호 단독 가입자는 email 이 None 이므로 이메일 fallback 건너뜀.
+            if not settings.KAKAO_ALIMTALK_KEY and user.email:
+                if delta < 0:
+                    subject = f"[만기톡] {c.category} 약정 만료 후 {abs(delta)}일 — 갈아타기 좋은 때"
+                elif delta == 0:
+                    subject = f"[만기톡] {c.category} 약정이 오늘 만료돼요"
+                else:
+                    subject = f"[만기톡] {c.category} 약정 만료 D-{delta}일 안내"
                 body_html = _build_contract_email(user.username, c, delta)
                 _run_async(send_email(user.email, subject, body_html))
 
@@ -242,7 +312,8 @@ def job_card_performance() -> None:
                 "</table>"
                 f'<p><a href="{settings.SERVICE_URL}/my-cards">카드 실적 자세히 보기 →</a></p>'
             )
-            _run_async(send_email(user.email, subject, body_html))
+            if user.email:
+                _run_async(send_email(user.email, subject, body_html))
 
     except OperationalError as exc:
         logger.warning("[SCHEDULER] job_card_performance DB 오류 (테이블 미생성 가능): %s", exc)
@@ -323,7 +394,8 @@ def job_monthly_report() -> None:
                 "</table>"
                 f'<p><a href="{settings.SERVICE_URL}/dashboard">만기톡 대시보드에서 자세히 보기 →</a></p>'
             )
-            _run_async(send_email(user.email, subject, body_html))
+            if user.email:
+                _run_async(send_email(user.email, subject, body_html))
 
     except Exception as exc:
         logger.exception("[SCHEDULER] job_monthly_report 오류: %s", exc)
@@ -338,8 +410,7 @@ def job_monthly_report() -> None:
 # 대상: is_active=True 인 통신(휴대폰/인터넷/TV) 약정 중 end_date == 오늘 - 7일
 # 조건: 해당 contract_id 에 대한 switch_log 가 없는 경우에만 발송
 # 채널: 카카오 알림톡 → 키 없으면 이메일 fallback
-
-_TELECOM_CATS = {"휴대폰", "인터넷", "TV"}
+# 주: _TELECOM_CATS 는 파일 상단에 정의됨
 
 
 def job_switch_followup() -> None:
@@ -347,7 +418,8 @@ def job_switch_followup() -> None:
     from app.models.contract_switch_log import ContractSwitchLog  # noqa: PLC0415
 
     today = date.today()
-    target_date = today - timedelta(days=7)
+    # D+10: D+7 정보성 만기 알림(job_contract_dday)과 같은 날 2건 발송되는 것을 피해 3일 간격
+    target_date = today - timedelta(days=10)
     db = SessionLocal()
     try:
         contracts = (
@@ -384,7 +456,7 @@ def job_switch_followup() -> None:
             if not user:
                 continue
 
-            recipient_phone = getattr(user, "phone", None) or user.email
+            recipient_phone = getattr(user, "phone", None) or user.email or f"user#{user.id}"
             variables = {
                 "username": user.username,
                 "category": c.category,
@@ -400,7 +472,9 @@ def job_switch_followup() -> None:
                 )
             )
 
-            if not settings.KAKAO_ALIMTALK_KEY:
+            # 이메일 — DEV FALLBACK ONLY (알림톡 키 없을 때만). 사용자 노출 채널은 카톡 단일.
+            # email None(전화번호 단독 가입)이면 건너뜀.
+            if not settings.KAKAO_ALIMTALK_KEY and user.email:
                 subject = f"[만기톡] {c.provider} {c.category} — 갈아탔어요?"
                 body_html = (
                     f"<h2>안녕하세요, {user.username}님!</h2>"

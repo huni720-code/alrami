@@ -33,10 +33,16 @@ export default api
 
 // Auth
 export const authApi = {
-  register: (data: { email: string; username: string; phone?: string; password: string }) =>
+  // 식별자(아이디) = 전화번호(필수). 이메일은 선택.
+  register: (data: { phone: string; username: string; email?: string; password: string }) =>
     api.post('/auth/register', data),
-  login: (data: { email: string; password: string }) =>
+  // identifier: 전화번호 또는 이메일 둘 다 허용(백엔드가 '@'로 구분).
+  login: (data: { identifier: string; password: string }) =>
     api.post('/auth/login', data),
+  forgotPassword: (data: { phone: string }) =>
+    api.post<{ message: string }>('/auth/forgot-password', data),
+  resetPassword: (data: { phone: string; code: string; new_password: string }) =>
+    api.post<{ message: string }>('/auth/reset-password', data),
   me: () => api.get('/users/me'),
 }
 
@@ -66,6 +72,7 @@ export interface UserProfile {
   has_ott: boolean
   has_rental: boolean
   rental_end_date: string | null
+  alarm_days: string
   onboarding_completed: boolean
 }
 
@@ -77,6 +84,7 @@ export interface UserProfileUpdate {
   has_ott?: boolean
   has_rental?: boolean
   rental_end_date?: string | null
+  alarm_days?: string
   onboarding_completed?: boolean
 }
 
@@ -307,6 +315,11 @@ export interface TelecomEstimate {
   saving_monthly: number
   saving_annual: number
   label: string
+  // 결정 카드: 선택약정 할인 소멸/재약정 시나리오 (백엔드 계산)
+  lapse_monthly: number
+  lapse_increase_monthly: number
+  reattach_monthly: number
+  assumption: string
 }
 
 export const recommendationApi = {
@@ -392,10 +405,12 @@ export interface ContractResponse {
   monthly_fee: number | null
   penalty_fee: number | null
   device_subsidy: number | null
+  owner_label: string | null
   end_date: string
   accuracy: 'estimated' | 'confirmed'
   is_active: boolean
   dday: number
+  status: '여유' | '점검' | '임박' | '지남'
 }
 
 export interface ContractCreateInput {
@@ -407,6 +422,7 @@ export interface ContractCreateInput {
   monthly_fee?: number
   penalty_fee?: number
   device_subsidy?: number
+  owner_label?: string
   accuracy?: 'estimated' | 'confirmed'
 }
 
@@ -419,6 +435,7 @@ export interface ContractUpdateInput {
   monthly_fee?: number
   penalty_fee?: number
   device_subsidy?: number
+  owner_label?: string | null
   accuracy?: 'estimated' | 'confirmed'
   is_active?: boolean
 }

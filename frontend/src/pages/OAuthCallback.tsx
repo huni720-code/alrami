@@ -55,13 +55,9 @@ export default function OAuthCallback() {
       .then(async (res) => {
         await login(res.data.access_token)
         const hadContract = await applyPendingContract()
-        const hadPending = await applyPendingProfile()
-        if (hadPending) {
-          navigate('/onboarding/complete')
-        } else if (hadContract) {
+        await applyPendingProfile()
+        if (hadContract || fromOnboarding) {
           navigate('/contracts/grid')
-        } else if (fromOnboarding) {
-          navigate('/onboarding/step3')
         } else {
           navigate('/dashboard')
         }

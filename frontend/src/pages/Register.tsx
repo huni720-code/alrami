@@ -1,21 +1,28 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../lib/api'
 
 export default function Register() {
-  const [form, setForm] = useState({ email: '', username: '', phone: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ phone: '', username: '', email: '', password: '', confirm: '' })
+  const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
+  const [duplicate, setDuplicate] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    // 전화번호는 숫자만 허용(하이픈/공백 차단), 최대 11자리.
+    const next = name === 'phone' ? value.replace(/\D/g, '').slice(0, 11) : value
+    setForm((prev) => ({ ...prev, [name]: next }))
   }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+    setDuplicate(false)
     if (form.password !== form.confirm) {
       setError('비밀번호가 일치하지 않습니다.')
       return
@@ -27,14 +34,19 @@ export default function Register() {
     setLoading(true)
     try {
       await authApi.register({
-        email: form.email,
+        phone: form.phone,
         username: form.username,
-        phone: form.phone || undefined,
+        email: form.email || undefined,
         password: form.password,
       })
       navigate('/login', { state: { message: '가입 완료! 로그인해 주세요.' } })
     } catch (err: any) {
-      setError(err.response?.data?.detail || '회원가입에 실패했습니다.')
+      if (err.response?.status === 409) {
+        setDuplicate(true)
+        setError('이미 가입된 번호예요')
+      } else {
+        setError(err.response?.data?.detail || '회원가입에 실패했습니다.')
+      }
     } finally {
       setLoading(false)
     }
@@ -48,21 +60,22 @@ export default function Register() {
         <div className="mb-8">
           <p className="text-[15px] font-bold text-[#10b981] mb-5 tracking-tight">만기톡</p>
           <h1 className="text-[26px] font-extrabold text-gray-900 leading-tight mb-1">
-            이메일로 시작하기
+            전화번호로 시작하기
           </h1>
           <p className="text-[15px] text-gray-400">알림을 받을 정보를 입력해 주세요</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
-            type="email"
-            name="email"
-            value={form.email}
+            type="tel"
+            name="phone"
+            value={form.phone}
             onChange={handleChange}
             required
             autoFocus
+            inputMode="numeric"
             className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
-            placeholder="이메일 (로그인 아이디)"
+            placeholder="전화번호 (아이디, 예: 01012345678)"
           />
           <input
             type="text"
@@ -73,27 +86,28 @@ export default function Register() {
             className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
             placeholder="이름"
           />
+          <div className="relative">
+            <input
+              type={showPw ? 'text' : 'password'}
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              required
+              minLength={8}
+              className="w-full bg-gray-50 rounded-2xl px-4 py-4 pr-12 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
+              placeholder="비밀번호 (8자 이상)"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 active:text-gray-600"
+            >
+              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           <input
-            type="tel"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            inputMode="numeric"
-            className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
-            placeholder="전화번호 (알림 수신용, 예: 01012345678)"
-          />
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            minLength={8}
-            className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
-            placeholder="비밀번호 (8자 이상)"
-          />
-          <input
-            type="password"
+            type={showPw ? 'text' : 'password'}
             name="confirm"
             value={form.confirm}
             onChange={handleChange}
@@ -101,9 +115,25 @@ export default function Register() {
             className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
             placeholder="비밀번호 확인"
           />
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
+            placeholder="이메일 (선택)"
+          />
 
-          {error && (
+          {error && !duplicate && (
             <p className="text-[13px] text-red-500 text-center bg-red-50 rounded-xl py-2 px-3">{error}</p>
+          )}
+          {duplicate && (
+            <p className="text-[13px] text-center bg-red-50 rounded-xl py-2.5 px-3">
+              <span className="text-red-500 font-semibold">이미 가입된 번호예요.</span>{' '}
+              <Link to="/login" className="text-[#10b981] font-bold underline">
+                로그인하기
+              </Link>
+            </p>
           )}
 
           <button

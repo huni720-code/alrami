@@ -29,7 +29,19 @@ def _dday(end_date: date) -> int:
     return (end_date - today).days
 
 
+def _status(dday: int) -> str:
+    """만료 임박도 4단계 라벨. 프론트 임계값 분산 방지 — 판정은 여기서만."""
+    if dday < 0:
+        return "지남"
+    if dday <= 30:
+        return "임박"
+    if dday <= 90:
+        return "점검"
+    return "여유"
+
+
 def _to_response(c: Contract) -> dict:
+    dday = _dday(c.end_date)
     return {
         "id": c.id,
         "category": c.category,
@@ -42,7 +54,9 @@ def _to_response(c: Contract) -> dict:
         "end_date": c.end_date,
         "accuracy": c.accuracy,
         "is_active": c.is_active,
-        "dday": _dday(c.end_date),
+        "dday": dday,
+        "owner_label": c.owner_label,
+        "status": _status(dday),
     }
 
 
@@ -111,6 +125,7 @@ def create_contract(
         monthly_fee=body.monthly_fee,
         penalty_fee=body.penalty_fee,
         device_subsidy=body.device_subsidy,
+        owner_label=body.owner_label,
         end_date=end_date,
         accuracy=body.accuracy,
         is_active=True,

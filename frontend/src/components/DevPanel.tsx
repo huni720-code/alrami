@@ -9,10 +9,9 @@ if (!import.meta.env.DEV) {
 
 const PAGES = [
   { label: '🏠 대시보드',       path: '/dashboard' },
-  { label: '📝 지출입력 Step1', path: '/onboarding/step1' },
-  { label: '💰 절약액 Step2',   path: '/onboarding/step2' },
-  { label: '📋 상세입력 Step3', path: '/onboarding/step3' },
-  { label: '🎉 완료',           path: '/onboarding/complete' },
+  { label: '📋 온보딩',         path: '/onboarding' },
+  { label: '🪝 훅 진단',         path: '/hook' },
+  { label: '📦 약정 그리드',     path: '/contracts/grid' },
   { label: '💳 카드실적',       path: '/my-cards' },
   { label: '⭐ 추천',           path: '/recommend' },
   { label: '👤 내정보',         path: '/settings' },

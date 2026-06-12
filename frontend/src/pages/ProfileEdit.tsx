@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { userApi } from '../lib/api'
+import { userApi, userProfileApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
+import { useToast } from '../components/Toast'
 
 // ── Toggle ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ function EditRow({
   const [input, setInput] = useState(value ?? '')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   const handleSave = async () => {
     setBusy(true)
@@ -55,6 +57,9 @@ function EditRow({
       setSaved(true)
       setEditing(false)
       setTimeout(() => setSaved(false), 2000)
+    } catch (e: any) {
+      // 409(중복 번호) 등 저장 실패 → 토스트로 표시, 편집 상태 유지.
+      showToast(e?.response?.data?.detail || '저장에 실패했어요.', 'error')
     } finally {
       setBusy(false)
     }
@@ -210,28 +215,28 @@ function PasswordChangeSection() {
   )
 }
 
-// ── 알림 시점 (localStorage) ───────────────────────────────────────────────────
+// ── 알림 시점 (백엔드 UserProfile.alarm_days) ───────────────────────────────────
+// 각 옵션은 만료일 기준 delta(일). 양수=만료 전, 0=당일, 음수=만료 후.
+// 백엔드 스케줄러(alarm_scheduler.CONTRACT_DDAY_TRIGGERS)와 동일한 정수를 저장한다.
 
 const TIMING_OPTIONS = [
-  { key: 'D-30', label: '만료 30일 전' },
-  { key: 'D-7',  label: '만료 7일 전' },
-  { key: 'D+7',  label: '만료 후 7일' },
+  { day: 30, label: '만료 30일 전' },
+  { day: 7,  label: '만료 7일 전' },
+  { day: 0,  label: '만료일 당일' },
+  { day: -7, label: '만료 후 7일' },
 ]
 
-interface NotifPref {
-  timing: string[]
-}
+const DEFAULT_ALARM_DAYS = [30, 7, 0, -7]
 
-function loadNotifPref(userId: number): NotifPref {
+function parseAlarmDays(raw: string | null | undefined): number[] {
+  if (!raw) return DEFAULT_ALARM_DAYS
   try {
-    const raw = localStorage.getItem(`notif:${userId}`)
-    if (raw) return JSON.parse(raw) as NotifPref
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'number')) {
+      return parsed
+    }
   } catch {}
-  return { timing: ['D-30', 'D-7'] }
-}
-
-function saveNotifPref(userId: number, pref: NotifPref) {
-  localStorage.setItem(`notif:${userId}`, JSON.stringify(pref))
+  return DEFAULT_ALARM_DAYS
 }
 
 // ── 회원 탈퇴 확인 ─────────────────────────────────────────────────────────────
@@ -285,21 +290,33 @@ export default function ProfileEdit() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
 
-  const [notif, setNotif] = useState<NotifPref>({ timing: ['D-30', 'D-7'] })
+  const [alarmDays, setAlarmDays] = useState<number[]>(DEFAULT_ALARM_DAYS)
 
   useEffect(() => {
-    if (user) setNotif(loadNotifPref(user.id))
+    let cancelled = false
+    userProfileApi
+      .get()
+      .then((res) => {
+        if (!cancelled) setAlarmDays(parseAlarmDays(res.data.alarm_days))
+      })
+      .catch(() => {
+        if (!cancelled) setAlarmDays(DEFAULT_ALARM_DAYS)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [user?.id])
 
-  const toggleTiming = useCallback((key: string) => {
-    if (!user) return
-    setNotif((prev) => {
-      const has = prev.timing.includes(key)
-      const next = { timing: has ? prev.timing.filter((k) => k !== key) : [...prev.timing, key] }
-      saveNotifPref(user.id, next)
-      return next
+  const toggleTiming = useCallback((day: number) => {
+    setAlarmDays((prev) => {
+      const has = prev.includes(day)
+      const next = has ? prev.filter((d) => d !== day) : [...prev, day]
+      // 백엔드에 저장. 정렬해 보기 좋게(만료 전→당일→만료 후).
+      const sorted = [...next].sort((a, b) => b - a)
+      userProfileApi.update({ alarm_days: JSON.stringify(sorted) }).catch(() => {})
+      return sorted
     })
-  }, [user])
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -338,11 +355,11 @@ export default function ProfileEdit() {
           </div>
           <div className="px-4">
             <EditRow
-              label="전화번호"
+              label="아이디(전화번호)"
               value={user?.phone ?? null}
               placeholder="01012345678"
               inputType="tel"
-              onSave={async (val) => { await userApi.updateMe({ phone: val || undefined }) }}
+              onSave={async (val) => { await userApi.updateMe({ phone: val }) }}
             />
           </div>
           <div className="px-4 flex items-center justify-between py-3.5">
@@ -358,12 +375,12 @@ export default function ProfileEdit() {
             <p className="text-[12px] text-gray-500 font-semibold mb-3">알림 시점</p>
             <div className="space-y-2.5">
               {TIMING_OPTIONS.map((opt) => {
-                const checked = notif.timing.includes(opt.key)
+                const checked = alarmDays.includes(opt.day)
                 return (
                   <button
-                    key={opt.key}
+                    key={opt.day}
                     type="button"
-                    onClick={() => toggleTiming(opt.key)}
+                    onClick={() => toggleTiming(opt.day)}
                     className="w-full flex items-center gap-3 py-1 active:bg-gray-50 rounded-lg transition-colors"
                   >
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
@@ -416,7 +433,7 @@ export default function ProfileEdit() {
           <div className="px-4">
             <Link
               to="/terms"
-              className="flex items-center justify-between py-3.5"
+              className="flex items-center justify-between py-3.5 active:bg-gray-50 rounded-lg transition-colors"
             >
               <span className="text-[15px] text-gray-800">서비스 이용약관</span>
               <span className="text-gray-300 text-[18px] leading-none">›</span>
@@ -427,7 +444,7 @@ export default function ProfileEdit() {
           <div className="px-4">
             <Link
               to="/privacy"
-              className="flex items-center justify-between py-3.5"
+              className="flex items-center justify-between py-3.5 active:bg-gray-50 rounded-lg transition-colors"
             >
               <span className="text-[15px] text-gray-800">개인정보처리방침</span>
               <span className="text-gray-300 text-[18px] leading-none">›</span>

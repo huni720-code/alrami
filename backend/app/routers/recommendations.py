@@ -114,11 +114,22 @@ def telecom_estimate(current_fee: int, db: Session = Depends(get_db)):
         if eligible
         else min(benchmarks, key=lambda b: b.spending_monthly or 0)
     )
+
+    # 결정 카드용: 선택약정 할인 소멸/재약정 시나리오 (계산은 전부 여기서)
+    # 가정: 현재 요금이 선택약정 25% 할인 적용가 → 원가 = current_fee / 0.75
+    lapse_monthly = round(current_fee / 0.75 / 10) * 10  # 10원 단위 반올림
+    lapse_increase_monthly = lapse_monthly - current_fee
+    reattach_monthly = current_fee  # 재약정 시 현재 할인가 유지
+
     return {
         "current_fee": current_fee,
         "saving_monthly": matched.saving_monthly,
         "saving_annual": matched.saving_annual,
         "label": matched.label,
+        "lapse_monthly": lapse_monthly,
+        "lapse_increase_monthly": lapse_increase_monthly,
+        "reattach_monthly": reattach_monthly,
+        "assumption": "현재 요금이 선택약정 25% 할인 적용가라고 가정한 추정값이에요",
     }
 
 

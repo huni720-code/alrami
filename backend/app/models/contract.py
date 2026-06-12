@@ -20,6 +20,7 @@ class Contract(Base):
     device_subsidy = Column(Integer, nullable=True)
     end_date = Column(Date, nullable=False)     # 항상 백엔드 계산/저장
     accuracy = Column(String, nullable=False, default="estimated")  # estimated | confirmed
+    owner_label = Column(String, nullable=True)  # 가족 라벨: 나/엄마/아빠/배우자/자녀/집
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(

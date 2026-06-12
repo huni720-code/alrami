@@ -18,6 +18,9 @@ class UserProfile(Base):
     has_ott = Column(Boolean, default=False)
     has_rental = Column(Boolean, default=False)
     rental_end_date = Column(Date, nullable=True)
+    # 약정 D-day 알림 시점(일) JSON 문자열. 기본 "[30, 7, 0, -7]"
+    # 양수=만료 전, 0=당일, 음수=만료 후. 스케줄러가 사용자별 필터에 사용.
+    alarm_days = Column(String, nullable=False, server_default="[30, 7, 0, -7]")
     onboarding_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(

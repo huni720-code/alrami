@@ -2,18 +2,14 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
 import OAuthCallback from './pages/OAuthCallback'
 import MyCards from './pages/MyCards'
 import Dashboard from './pages/Dashboard'
 import ExpenseInput from './pages/ExpenseInput'
-import SmsSettings from './pages/SmsSettings'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './components/AdminLayout'
 import Onboarding from './pages/Onboarding'
-import Step1 from './pages/onboarding/Step1'
-import Step2 from './pages/onboarding/Step2'
-import Step3 from './pages/onboarding/Step3'
-import Complete from './pages/onboarding/Complete'
 import ProfileEdit from './pages/ProfileEdit'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
@@ -47,6 +43,7 @@ export default function App() {
       {/* 공개 라우트 */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot" element={<ForgotPassword />} />
       <Route path="/oauth/callback" element={<OAuthCallback />} />
 
       {/* 훅 화면 (비로그인 가능) */}
@@ -56,19 +53,13 @@ export default function App() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
 
-      {/* 온보딩 (기존) */}
+      {/* 온보딩 — 통신비 1개 질문 → 약정 그리드 */}
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-
-      {/* 온보딩: step1~2는 비로그인, step3~complete는 로그인 필요 */}
-      <Route path="/onboarding/step1" element={<Step1 />} />
-      <Route path="/onboarding/step2" element={<Step2 />} />
-      <Route path="/onboarding/step3" element={<ProtectedRoute><Step3 /></ProtectedRoute>} />
-      <Route path="/onboarding/complete" element={<ProtectedRoute><Complete /></ProtectedRoute>} />
 
       {/* 일반 사용자 라우트 */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/expenses" element={<ProtectedRoute><ExpenseInput /></ProtectedRoute>} />
-      <Route path="/sms" element={<ProtectedRoute><SmsSettings /></ProtectedRoute>} />
+      {/* /sms (카드 문자 파싱 — 동결 영역) 라우트 제거. SmsSettings.tsx 파일은 보존. */}
       <Route path="/expense-import" element={<ProtectedRoute><ExpenseImport /></ProtectedRoute>} />
       <Route path="/coach" element={<ProtectedRoute><Coach /></ProtectedRoute>} />
       <Route path="/my-cards" element={<ProtectedRoute><MyCards /></ProtectedRoute>} />

@@ -164,7 +164,7 @@ function ContractFormView({
       {/* 상단 내비 */}
       <div className="flex items-center px-6 pt-14 pb-2">
         {onBack && (
-          <button type="button" onClick={onBack} className="mr-3 text-gray-400 text-[22px] leading-none min-h-[44px] min-w-[44px] flex items-center">
+          <button type="button" onClick={onBack} className="mr-3 text-gray-500 text-[22px] leading-none min-h-[44px] min-w-[44px] flex items-center rounded-full active:bg-gray-100 transition-colors">
             ←
           </button>
         )}
@@ -264,7 +264,7 @@ function ContractFormView({
           <button
             type="button"
             onClick={() => onHelper(form)}
-            className="w-full text-center text-[14px] text-gray-400 py-3 min-h-[44px]"
+            className="w-full text-center text-[14px] text-gray-500 py-3 min-h-[44px] rounded-xl active:bg-gray-100 transition-colors"
           >
             정확히 확인할래요 →
           </button>
@@ -335,7 +335,7 @@ function GridView({ completed, onAdd, onDone }: GridViewProps) {
         <button
           type="button"
           onClick={onDone}
-          className="w-full text-center text-[14px] text-gray-400 py-3 min-h-[44px]"
+          className="w-full text-center text-[14px] text-gray-500 py-3 min-h-[44px] rounded-xl active:bg-gray-100 transition-colors"
         >
           없으면 건너뛰기
         </button>
@@ -363,7 +363,7 @@ function HelperView({
 }: HelperViewProps) {
   const [providers, setProviders] = useState<ProviderInfo[]>([])
   const [selected, setSelected] = useState('')
-  const [dateInput, setDateInput] = useState('') // YYYY-MM
+  const [dateInput, setDateInput] = useState('') // YYYY-MM-DD (일 단위)
   const [busy, setBusy] = useState(false)
   const [dateError, setDateError] = useState('')
 
@@ -382,9 +382,9 @@ function HelperView({
 
   const validateDate = (val: string) => {
     if (!val) { setDateError(''); return false }
-    const [y, m] = val.split('-').map(Number)
-    if (!y || !m || m < 1 || m > 12 || y < 2020 || y > 2035) {
-      setDateError('올바른 날짜를 입력해 주세요 (예: 2027-03)')
+    const [y, m, d] = val.split('-').map(Number)
+    if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31 || y < 2020 || y > 2035) {
+      setDateError('올바른 날짜를 입력해 주세요 (예: 2027-03-15)')
       return false
     }
     setDateError('')
@@ -394,7 +394,7 @@ function HelperView({
   const handleConfirm = async () => {
     if (!selected || !dateInput || !validateDate(dateInput) || busy) return
     setBusy(true)
-    const endDate = `${dateInput}-01`
+    const endDate = dateInput
     try {
       if (existingContractId !== null) {
         const res = await contractApi.update(existingContractId, {
@@ -421,7 +421,7 @@ function HelperView({
     <div className="flex flex-col min-h-screen bg-white">
       {/* 상단 내비 */}
       <div className="flex items-center px-6 pt-14 pb-2">
-        <button type="button" onClick={onBack} className="mr-3 text-gray-400 text-[22px] leading-none min-h-[44px] min-w-[44px] flex items-center">
+        <button type="button" onClick={onBack} className="mr-3 text-gray-500 text-[22px] leading-none min-h-[44px] min-w-[44px] flex items-center rounded-full active:bg-gray-100 transition-colors">
           ←
         </button>
         <p className="text-[11px] text-gray-400">약정일 확인 도우미</p>
@@ -500,15 +500,14 @@ function HelperView({
         <div>
           <p className="text-[12px] text-gray-500 font-semibold mb-2">확인한 약정 종료일</p>
           <input
-            type="month"
+            type="date"
             value={dateInput}
             onChange={(e) => {
               setDateInput(e.target.value)
               validateDate(e.target.value)
             }}
-            placeholder="2027-03"
-            min="2024-01"
-            max="2035-12"
+            min="2024-01-01"
+            max="2035-12-31"
             className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-[18px] font-bold text-gray-800 outline-none focus:border-[#10b981] transition-colors"
           />
           {dateError && (

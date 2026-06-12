@@ -16,6 +16,7 @@ class ContractCreate(BaseModel):
     monthly_fee: Optional[int] = None
     penalty_fee: Optional[int] = None
     device_subsidy: Optional[int] = None
+    owner_label: Optional[str] = None  # 가족 라벨: 나/엄마/아빠/배우자/자녀/집
     accuracy: Literal["estimated", "confirmed"] = "estimated"
 
     @field_validator("category")
@@ -30,6 +31,14 @@ class ContractCreate(BaseModel):
     def term_positive(cls, v: Optional[int]) -> Optional[int]:
         if v is not None and v <= 0:
             raise ValueError("term_months는 1 이상이어야 합니다.")
+        return v
+
+    @field_validator("monthly_fee")
+    @classmethod
+    def fee_range(cls, v: Optional[int]) -> Optional[int]:
+        # 원 단위. 만원 단위 오입력(×10000) 방지용 상한
+        if v is not None and not (0 <= v <= 2_000_000):
+            raise ValueError("monthly_fee는 0~2,000,000원 범위여야 합니다.")
         return v
 
     @model_validator(mode="after")
@@ -48,8 +57,16 @@ class ContractUpdate(BaseModel):
     monthly_fee: Optional[int] = None
     penalty_fee: Optional[int] = None
     device_subsidy: Optional[int] = None
+    owner_label: Optional[str] = None
     accuracy: Optional[Literal["estimated", "confirmed"]] = None
     is_active: Optional[bool] = None
+
+    @field_validator("monthly_fee")
+    @classmethod
+    def fee_range(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and not (0 <= v <= 2_000_000):
+            raise ValueError("monthly_fee는 0~2,000,000원 범위여야 합니다.")
+        return v
 
 
 class ContractResponse(BaseModel):
@@ -61,10 +78,12 @@ class ContractResponse(BaseModel):
     monthly_fee: Optional[int]
     penalty_fee: Optional[int]
     device_subsidy: Optional[int]
+    owner_label: Optional[str]
     end_date: date
     accuracy: str
     is_active: bool
     dday: int  # 양수=남은 일수, 0=당일, 음수=초과
+    status: str  # 여유 | 점검 | 임박 | 지남 (백엔드 판정)
 
     model_config = ConfigDict(from_attributes=True)
 

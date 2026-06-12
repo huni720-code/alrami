@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi, userApi, contractApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -34,25 +35,24 @@ async function applyPendingContract() {
 }
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showEmail, setShowEmail] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const fromOnboarding = searchParams.get('from') === 'onboarding'
+  const flashMessage = (location.state as { message?: string } | null)?.message
 
   const afterLogin = async () => {
     const hadContract = await applyPendingContract()
-    const hadPending = await applyPendingProfile()
-    if (hadPending) {
-      navigate('/onboarding/complete')
-    } else if (hadContract) {
+    await applyPendingProfile()
+    if (hadContract || fromOnboarding) {
       navigate('/contracts/grid')
-    } else if (fromOnboarding) {
-      navigate('/onboarding/step3')
     } else {
       navigate('/dashboard')
     }
@@ -63,7 +63,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const res = await authApi.login({ email, password })
+      const res = await authApi.login({ identifier, password })
       await login(res.data.access_token)
       await afterLogin()
     } catch (err: any) {
@@ -113,6 +113,12 @@ export default function Login() {
           )}
         </div>
 
+        {flashMessage && (
+          <p className="text-[13px] text-[#10b981] text-center bg-emerald-50 rounded-xl py-2.5 mb-4 font-semibold">
+            {flashMessage}
+          </p>
+        )}
+
         <div className="space-y-3">
           {/* 카카오 로그인 */}
           <button
@@ -136,7 +142,7 @@ export default function Login() {
               onClick={() => setShowEmail((v) => !v)}
               className="mx-3 text-[13px] text-gray-400 whitespace-nowrap"
             >
-              {showEmail ? '이메일 숨기기 ▲' : '이메일로 로그인 ▼'}
+              {showEmail ? '전화번호 숨기기 ▲' : '전화번호로 로그인 ▼'}
             </button>
             <div className="flex-grow border-t border-gray-100" />
           </div>
@@ -144,24 +150,41 @@ export default function Login() {
           {showEmail && (
             <form onSubmit={handleSubmit} className="space-y-3">
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
+                inputMode="email"
+                autoComplete="username"
                 className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
-                placeholder="이메일"
+                placeholder="전화번호 (또는 이메일)"
               />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-gray-50 rounded-2xl px-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
-                placeholder="비밀번호"
-              />
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full bg-gray-50 rounded-2xl px-4 py-4 pr-12 text-[15px] outline-none focus:ring-2 focus:ring-[#10b981]"
+                  placeholder="비밀번호"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 active:text-gray-600"
+                >
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {error && (
                 <p className="text-[13px] text-red-500 text-center bg-red-50 rounded-xl py-2">{error}</p>
               )}
+              <div className="flex justify-end">
+                <Link to="/forgot" className="text-[13px] text-gray-400 active:text-gray-600">
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
               <button
                 type="submit"
                 disabled={loading}
@@ -176,7 +199,7 @@ export default function Login() {
         <p className="text-center text-[14px] text-gray-400 mt-8">
           계정이 없으신가요?{' '}
           <Link to="/register" className="text-[#10b981] font-bold">
-            이메일로 가입
+            전화번호로 가입
           </Link>
         </p>
 

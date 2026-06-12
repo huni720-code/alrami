@@ -5,13 +5,16 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './context/AuthContext.tsx'
 import DevPanel from './components/DevPanel.tsx'
+import { ToastProvider } from './components/Toast.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
-        <DevPanel />
+        <ToastProvider>
+          <App />
+          <DevPanel />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
