@@ -1245,7 +1245,11 @@ export default function Dashboard() {
     (c) => c.dday <= 0 && c.dday >= -60 && TELECOM_CATS.has(c.category) && !answeredIds.has(c.id)
   ) ?? null
 
-  const mostUrgent = contracts[0] ?? null
+  // 지남(만기 경과)은 전부 결정카드로 올림. 지남이 없으면 가장 임박한 1건만 카드.
+  const lapsedContracts = contracts.filter((c) => c.status === '지남')
+  const urgentCards = lapsedContracts.length > 0
+    ? lapsedContracts
+    : (contracts[0] ? [contracts[0]] : [])
 
   const handleSaved = (updated: ContractResponse, keepOpen = false) => {
     setContracts((prev) =>
@@ -1274,7 +1278,10 @@ export default function Dashboard() {
 
   // 다음 만기 = 백엔드 end_date 오름차순 첫 항목 (프론트 재정렬·계산 금지)
   const nextExpiry = contracts[0] ?? null
-  const restContracts = contracts.slice(1)
+  // 지남이 있으면 지남을 전부 카드로 빼고 나머지만 리스트. 없으면 가장 임박 1건만 카드.
+  const restContracts = lapsedContracts.length > 0
+    ? contracts.filter((c) => c.status !== '지남')
+    : contracts.slice(1)
 
   return (
     <Layout>
@@ -1311,9 +1318,13 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* 가장 임박 1건 — 큰 카드 */}
-              {mostUrgent && (
-                <UrgentCard contract={mostUrgent} onTap={() => setOverlayTarget(mostUrgent)} />
+              {/* 지남(만기 경과)은 전부 큰 카드로 / 없으면 가장 임박 1건 */}
+              {urgentCards.length > 0 && (
+                <div className="space-y-2">
+                  {urgentCards.map((c) => (
+                    <UrgentCard key={c.id} contract={c} onTap={() => setOverlayTarget(c)} />
+                  ))}
+                </div>
               )}
 
               {/* 나머지 약정 — 컴팩트 리스트 */}

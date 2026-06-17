@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: home status consistency, relaxed-state collapse, keep-decision (alert suppression), combo-discount warning, category copy split"
+git commit -m "feat: surface all lapsed contracts as decision cards on home (not just the most urgent one)"
 git push
 
 echo.
