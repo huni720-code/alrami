@@ -21,6 +21,7 @@ class Contract(Base):
     end_date = Column(Date, nullable=False)     # 항상 백엔드 계산/저장
     accuracy = Column(String, nullable=False, default="estimated")  # estimated | confirmed
     owner_label = Column(String, nullable=True)  # 가족 라벨: 나/엄마/아빠/배우자/자녀/집
+    decision = Column(String, nullable=True)  # keep(이대로 둘게요) | switch | None — keep이면 재알림 억제
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(

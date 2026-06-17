@@ -60,6 +60,7 @@ class ContractUpdate(BaseModel):
     owner_label: Optional[str] = None
     accuracy: Optional[Literal["estimated", "confirmed"]] = None
     is_active: Optional[bool] = None
+    decision: Optional[Literal["keep", "switch"]] = None
 
     @field_validator("monthly_fee")
     @classmethod
@@ -84,6 +85,7 @@ class ContractResponse(BaseModel):
     is_active: bool
     dday: int  # 양수=남은 일수, 0=당일, 음수=초과
     status: str  # 여유 | 점검 | 임박 | 지남 (백엔드 판정)
+    decision: Optional[str] = None  # keep | switch | None
 
     model_config = ConfigDict(from_attributes=True)
 

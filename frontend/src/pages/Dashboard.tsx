@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Smartphone, Wifi, Tv, Droplets, Plus, X, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Smartphone, Wifi, Tv, Droplets, Plus, X, CheckCircle, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
 import { contractApi, switchLogApi, recommendationApi } from '../lib/api'
 import type { ContractResponse, SwitchLogSummary, TelecomEstimate, ProviderInfo } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -124,6 +124,7 @@ function CompactRow({ contract, onTap }: { contract: ContractResponse; onTap: ()
       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 ${tone.pill}`}>
         {contract.status} {ddayLabel(contract.dday)}
       </span>
+      <ChevronRight size={16} className="text-gray-300 shrink-0 ml-0.5" />
     </button>
   )
 }
@@ -161,6 +162,8 @@ function DetailOverlay({
   // 지남(만료 경과) 상태 — 판정은 백엔드 status, 일수는 백엔드 dday의 절대값만 표시(연산 금지)
   const isLapsed = contract.status === '지남'
   const lapsedDays = Math.abs(contract.dday)
+  // 여유(만기 한참 남음): 결정 토글·위약금 카피를 접고 안심 안내만 — 판정은 백엔드 status
+  const isRelaxed = contract.status === '여유'
 
   const [localFee, setLocalFee] = useState<number | null>(contract.monthly_fee)
   const hasFee = isMobile && !!localFee
@@ -285,6 +288,61 @@ function DetailOverlay({
     }
   }
 
+  // 유지 종착: '이대로 둘게요' — 결정 저장 + 재알림 억제(백엔드 decision='keep')
+  const handleKeepDecision = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const res = await contractApi.update(contract.id, { decision: 'keep' })
+      showToast('이대로 지켜볼게요')
+      onSaved(res.data)
+    } catch {
+      showToast('저장에 실패했어요', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 결정 취소 — 다시 만기 알림 받기
+  const handleResumeAlerts = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const res = await contractApi.update(contract.id, { decision: null })
+      showToast('다시 알려드릴게요')
+      onSaved(res.data, true)
+    } catch {
+      showToast('저장에 실패했어요', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 유지 갈래 종착 CTA (휴대폰 keep / 인터넷·TV·정수기 stay 공통)
+  const KeepCta = () =>
+    contract.decision === 'keep' ? (
+      <div className="rounded-2xl bg-[#E1F5EE] border border-[#10b981]/20 p-4 flex items-center justify-between">
+        <p className="text-[13px] text-[#0F6E56] font-bold">이대로 지켜보는 중 · 만기 알림 멈춤</p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleResumeAlerts}
+          className="text-[12px] text-[#0F6E56] font-bold underline shrink-0 ml-3 disabled:opacity-60"
+        >
+          알림 다시 받기
+        </button>
+      </div>
+    ) : (
+      <button
+        type="button"
+        disabled={busy}
+        onClick={handleKeepDecision}
+        className="w-full bg-[#10b981] disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-[15px] active:scale-[0.98] transition-all"
+      >
+        이대로 둘게요
+      </button>
+    )
+
   const switchMode = (m: 'know' | 'unknown') => {
     setMode(m)
     setEndDate(contract.end_date ?? '')
@@ -397,8 +455,20 @@ function DetailOverlay({
           )}
         </section>
 
+        {/* 여유 상태 — 결정 토글·위약금 카피 대신 안심 안내만 */}
+        {isRelaxed && (
+          <section>
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-4">
+              <p className="text-[14px] font-extrabold text-emerald-700">아직 여유 있어요</p>
+              <p className="text-[12px] text-emerald-600 font-semibold mt-1">
+                만기 {fmtYearMonth(contract.end_date)} · {ddayLabel(contract.dday)} · 가까워지면 알려드릴게요
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* 결정 카드 — 휴대폰 only */}
-        {isMobile && (
+        {isMobile && !isRelaxed && (
           <section>
             {isLapsed ? (
               <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 mb-3">
@@ -540,6 +610,9 @@ function DetailOverlay({
                     </div>
                   </div>
                 )}
+
+                {/* 유지 종착 — 이대로 둘게요 */}
+                <div className="pt-1"><KeepCta /></div>
               </>
             )}
 
@@ -574,11 +647,29 @@ function DetailOverlay({
                 </p>
               </div>
             )}
+
+            {/* 연락 가이드 종착 — 통신사 고객센터·약정일 확인 (커미션 없음) */}
+            <button
+              type="button"
+              onClick={() => setShowChecklistHelper((v) => !v)}
+              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] active:scale-[0.98] transition-all"
+            >
+              <span>고객센터 연락 · 약정일 확인</span>
+              {showChecklistHelper ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+            {showChecklistHelper && (
+              <ContractHelperSection
+                category={contract.category}
+                allProviders={providers}
+                onSaveConfirmed={handleHelperConfirmed}
+                busy={busy}
+              />
+            )}
           </section>
         )}
 
         {/* 인터넷·TV — 만료 후 결정 토글 (금액 단정 금지: 데이터 없는 품목) */}
-        {(contract.category === '인터넷' || contract.category === 'TV') && (
+        {(contract.category === '인터넷' || contract.category === 'TV') && !isRelaxed && (
           <section>
             {isLapsed ? (
               <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 mb-3">
@@ -622,7 +713,7 @@ function DetailOverlay({
                 <ul className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
                   {[
                     '재약정 사은품·요금할인 조건 문의',
-                    '결합할인(휴대폰·TV) 영향 확인',
+                    '결합상품(휴대폰·인터넷·TV) 묶음 할인 유지 확인',
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-2 text-[13px] text-gray-600 leading-relaxed">
                       <CheckCircle size={16} className="text-[#10b981] shrink-0 mt-0.5" />
@@ -633,6 +724,8 @@ function DetailOverlay({
                 <p className="text-[12px] text-[#0F6E56] font-semibold leading-relaxed">
                   재약정 혜택을 챙기면 보통 유리해요.
                 </p>
+                {/* 유지 종착 — 이대로 둘게요 */}
+                <KeepCta />
               </div>
             )}
 
@@ -652,11 +745,17 @@ function DetailOverlay({
                     </p>
                   </div>
                 )}
+                {/* 결합할인 경고 — 체크리스트에서 승격 (금액 단정 금지) */}
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
+                  <p className="text-[13px] text-amber-800 font-bold leading-relaxed">
+                    이 약정을 해지하면 묶인 휴대폰·{contract.category === 'TV' ? '인터넷' : 'TV'} 결합할인이 깨져 다른 회선 요금이 오를 수 있어요.
+                  </p>
+                  <p className="text-[12px] text-amber-600 font-semibold mt-1">통신사에 결합 영향(할인 회수·위약금)을 꼭 확인하세요.</p>
+                </div>
                 <ul className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
                   {[
                     '타사 신규가입 혜택(사은품·할인) 비교',
-                    '결합할인(휴대폰·TV) 영향 확인',
-                    '해지 시 장비 반납',
+                    contract.category === 'TV' ? '해지 시 셋톱박스 반납' : '해지 시 모뎀·공유기 반납',
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-2 text-[13px] text-gray-600 leading-relaxed">
                       <CheckCircle size={16} className="text-[#10b981] shrink-0 mt-0.5" />
@@ -690,7 +789,7 @@ function DetailOverlay({
         )}
 
         {/* 정수기(렌탈) — 의무기간 후 결정 토글 */}
-        {contract.category === '정수기' && (
+        {contract.category === '정수기' && !isRelaxed && (
           <section>
             {isLapsed ? (
               <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 mb-3">
@@ -744,6 +843,8 @@ function DetailOverlay({
                     </li>
                   ))}
                 </ul>
+                {/* 유지 종착 — 이대로 둘게요 */}
+                <KeepCta />
               </div>
             )}
 
@@ -1204,7 +1305,7 @@ export default function Dashboard() {
                 </p>
                 {nextExpiry && (
                   <p className="text-[20px] font-extrabold text-gray-900 leading-snug mt-1 tracking-tight">
-                    다음 만기, {fmtMonthDay(nextExpiry.end_date)}{' '}
+                    {nextExpiry.status === '지남' ? '만기 지남, ' : '다음 만기, '}{fmtMonthDay(nextExpiry.end_date)}{' '}
                     {nextExpiry.owner_label ? `${nextExpiry.owner_label} ` : ''}{nextExpiry.category}
                   </p>
                 )}

@@ -57,6 +57,7 @@ def _to_response(c: Contract) -> dict:
         "dday": dday,
         "owner_label": c.owner_label,
         "status": _status(dday),
+        "decision": c.decision,
     }
 
 
@@ -153,6 +154,7 @@ def update_contract(
         raise HTTPException(status_code=404, detail="약정을 찾을 수 없습니다.")
 
     update_data = body.model_dump(exclude_unset=True)
+    prev_end = contract.end_date
 
     if "end_date" in update_data and update_data["end_date"] is not None:
         # confirmed 직접 override: end_date만 설정, start+term 재계산 생략
@@ -169,6 +171,11 @@ def update_contract(
             tm = contract.term_months
             if sd and tm:
                 contract.end_date = _add_months(sd, tm)
+
+    # 재약정(만기일 이동) 시 결정 초기화 — 새 주기는 다시 지켜봐야 함.
+    # 단, 이번 요청에서 decision을 명시했으면 존중.
+    if contract.end_date != prev_end and "decision" not in update_data:
+        contract.decision = None
 
     contract.updated_at = datetime.now(timezone.utc)
     db.commit()

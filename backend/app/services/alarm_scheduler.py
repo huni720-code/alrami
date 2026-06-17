@@ -164,6 +164,10 @@ def job_contract_dday() -> None:
             if delta not in CONTRACT_DDAY_TRIGGERS:
                 continue
 
+            # '이대로 둘게요'(keep) 결정 시 재알림 억제 (재약정으로 만기일이 바뀌면 라우터가 초기화)
+            if getattr(c, "decision", None) == "keep":
+                continue
+
             user = (
                 db.query(User)
                 .filter(User.id == c.user_id, User.is_active == True)  # noqa: E712
@@ -433,6 +437,10 @@ def job_switch_followup() -> None:
 
         for c in contracts:
             if c.category not in _TELECOM_CATS:
+                continue
+
+            # '이대로 둘게요'(keep) 결정 시 갈아탔어요 후속도 건너뜀
+            if getattr(c, "decision", None) == "keep":
                 continue
 
             already_answered = (

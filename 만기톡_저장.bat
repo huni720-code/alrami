@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "mangitalk v0.2: decision cards, family contracts, kakao-only alerts, phone-based auth, design pass"
+git commit -m "feat: home status consistency, relaxed-state collapse, keep-decision (alert suppression), combo-discount warning, category copy split"
 git push
 
 echo.

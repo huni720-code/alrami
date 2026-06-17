@@ -411,6 +411,7 @@ export interface ContractResponse {
   is_active: boolean
   dday: number
   status: '여유' | '점검' | '임박' | '지남'
+  decision: 'keep' | 'switch' | null
 }
 
 export interface ContractCreateInput {
@@ -438,6 +439,7 @@ export interface ContractUpdateInput {
   owner_label?: string | null
   accuracy?: 'estimated' | 'confirmed'
   is_active?: boolean
+  decision?: 'keep' | 'switch' | null
 }
 
 export interface ContractEstimate {
