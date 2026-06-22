@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { adminApi, type AdminStats, type BenchmarkItem, type SavedBenchmark } from '../../lib/api'
+import { adminApi, type AdminStats, type BenchmarkItem, type SavedBenchmark, type MarketBenchmarkInput } from '../../lib/api'
 
 type CalcResult = { card: BenchmarkItem[]; telecom: BenchmarkItem[] }
+
+const MARKET_CATS = ['인터넷', 'TV', '정수기', '휴대폰']
 
 export default function Engine() {
   const [stats, setStats] = useState<AdminStats | null>(null)
@@ -180,6 +182,119 @@ export default function Engine() {
           </div>
         </div>
       )}
+
+      <MarketBenchmarkPanel />
+    </div>
+  )
+}
+
+// ── 시장 벤치마크(대략) 업데이트 — 어드민이 공개 출처 보고 수동 갱신 → 앱 즉시 반영 ──
+function MarketBenchmarkPanel() {
+  const [rows, setRows] = useState<MarketBenchmarkInput[]>([])
+  const [saving, setSaving] = useState(false)
+  const [savedAt, setSavedAt] = useState<string | null>(null)
+
+  useEffect(() => { load() }, [])
+  const load = async () => {
+    try {
+      const { data } = await adminApi.getMarketBenchmarks()
+      const byCat: Record<string, MarketBenchmarkInput> = {}
+      data.forEach((d) => { byCat[d.category] = d })
+      setRows(MARKET_CATS.map((c) => byCat[c] ?? {
+        category: c, reattach_subsidy_approx: null, new_subsidy_approx: null,
+        discount_note: null, source: null, effective_month: null,
+      }))
+      const latest = data.map((d) => d.updated_at).filter(Boolean).sort().pop()
+      setSavedAt(latest ?? null)
+    } catch {}
+  }
+
+  const setField = (cat: string, field: keyof MarketBenchmarkInput, value: string | number | null) =>
+    setRows((prev) => prev.map((r) => (r.category === cat ? { ...r, [field]: value } : r)))
+
+  // 만원 단위 입력 → 원으로 저장
+  const manwonToWon = (v: string): number | null => (v.trim() === '' ? null : Math.round(Number(v) * 10000))
+  const wonToManwon = (won: number | null): string => (won == null ? '' : String(Math.round(won / 10000)))
+
+  const handleApply = async () => {
+    setSaving(true)
+    try {
+      await adminApi.saveMarketBenchmarks(rows)
+      alert('적용되었습니다. 앱에 즉시 반영됩니다.')
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || '저장 실패')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">시장 벤치마크 (대략)</p>
+          <p className="text-xs text-gray-400 mt-1">
+            공개 출처(방통위 경품 한도·공식 약정할인율)를 보고 입력 → 적용. 앱엔 "대략 + 기준월"으로 표시돼요. 경쟁사 크롤 아님.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {savedAt && <span className="text-xs text-gray-400">{new Date(savedAt).toLocaleString('ko-KR')} 갱신</span>}
+          <button
+            onClick={handleApply}
+            disabled={saving}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium py-2 px-5 rounded-lg transition-colors"
+          >
+            {saving ? '적용 중...' : '적용 (앱 반영)'}
+          </button>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-100">
+            <tr>
+              <th className="text-left px-4 py-2.5 font-medium">카테고리</th>
+              <th className="text-left px-4 py-2.5 font-medium">재약정 사은품(만원)</th>
+              <th className="text-left px-4 py-2.5 font-medium">신규 사은품(만원)</th>
+              <th className="text-left px-4 py-2.5 font-medium">요금할인 메모</th>
+              <th className="text-left px-4 py-2.5 font-medium">기준월</th>
+              <th className="text-left px-4 py-2.5 font-medium">출처</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {rows.map((r) => (
+              <tr key={r.category}>
+                <td className="px-4 py-3 text-gray-700 text-xs font-semibold whitespace-nowrap">{r.category}</td>
+                <td className="px-4 py-2">
+                  <input type="number" value={wonToManwon(r.reattach_subsidy_approx)}
+                    onChange={(e) => setField(r.category, 'reattach_subsidy_approx', manwonToWon(e.target.value))}
+                    placeholder="예: 15" className="w-20 border border-gray-200 rounded px-2 py-1 text-sm" />
+                </td>
+                <td className="px-4 py-2">
+                  <input type="number" value={wonToManwon(r.new_subsidy_approx)}
+                    onChange={(e) => setField(r.category, 'new_subsidy_approx', manwonToWon(e.target.value))}
+                    placeholder="예: 30" className="w-20 border border-gray-200 rounded px-2 py-1 text-sm" />
+                </td>
+                <td className="px-4 py-2">
+                  <input type="text" value={r.discount_note ?? ''}
+                    onChange={(e) => setField(r.category, 'discount_note', e.target.value || null)}
+                    placeholder="예: 선택약정 25% 재약정" className="w-48 border border-gray-200 rounded px-2 py-1 text-sm" />
+                </td>
+                <td className="px-4 py-2">
+                  <input type="text" value={r.effective_month ?? ''}
+                    onChange={(e) => setField(r.category, 'effective_month', e.target.value || null)}
+                    placeholder="2026-06" className="w-24 border border-gray-200 rounded px-2 py-1 text-sm" />
+                </td>
+                <td className="px-4 py-2">
+                  <input type="text" value={r.source ?? ''}
+                    onChange={(e) => setField(r.category, 'source', e.target.value || null)}
+                    placeholder="방통위 경품 한도" className="w-40 border border-gray-200 rounded px-2 py-1 text-sm" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

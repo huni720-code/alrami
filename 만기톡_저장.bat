@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "fix: drop term assumption copy, simplify save label, boxed+tap-lift delete button, more sheet bottom padding"
+git commit -m "feat: market benchmark (approx, DB-backed, admin-updatable) + 2-axis keep cards + switch subsidy upside"
 git push
 
 echo.

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Smartphone, Wifi, Tv, Droplets, Plus, X, CheckCircle, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
-import { contractApi, switchLogApi, recommendationApi } from '../lib/api'
-import type { ContractResponse, SwitchLogSummary, TelecomEstimate, ProviderInfo } from '../lib/api'
+import { contractApi, switchLogApi, recommendationApi, benchmarkApi } from '../lib/api'
+import type { ContractResponse, SwitchLogSummary, TelecomEstimate, ProviderInfo, MarketBenchmark } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import ContractHelperSection from '../components/ContractHelperSection'
@@ -40,6 +40,11 @@ function fmtMonthDay(d: string) {
 
 function ownerCat(c: ContractResponse) {
   return c.owner_label ? `${c.owner_label} · ${c.category}` : c.category
+}
+
+// 대략 금액 표기 — 원 → "약 N만원" (단정 아님, 대략)
+function approxManwon(won: number) {
+  return `약 ${Math.round(won / 10000)}만원`
 }
 
 // 상태 라벨 톤 — 판정은 백엔드(contract.status), 프론트는 색만 매핑
@@ -248,6 +253,14 @@ function DetailOverlay({
     contractApi.providerInfo().then((r) => setProviders(r.data)).catch(() => {})
   }, [])
 
+  // 시장 벤치마크(대략) — 카테고리별 최신값. 표시는 항상 '대략 + 기준월'. 계산/단정 아님.
+  const [benchmark, setBenchmark] = useState<MarketBenchmark | null>(null)
+  useEffect(() => {
+    benchmarkApi.market()
+      .then((r) => setBenchmark(r.data.find((b) => b.category === contract.category) ?? null))
+      .catch(() => {})
+  }, [contract.category])
+
   const handleHelperConfirmed = async (hp: string, confirmedDate: string): Promise<boolean> => {
     setBusy(true)
     try {
@@ -342,6 +355,41 @@ function DetailOverlay({
         이대로 둘게요
       </button>
     )
+
+  // 유지 2축 강조 카드 — ① 쓰던 곳 요금할인 ② 재약정 사은품(대략). 값은 백엔드 벤치마크.
+  const BenchmarkKeepCards = () =>
+    benchmark && (benchmark.discount_note || benchmark.reattach_subsidy_approx) ? (
+      <div className="space-y-2">
+        {benchmark.discount_note && (
+          <div className="rounded-2xl bg-[#E1F5EE] border border-[#10b981]/20 p-4">
+            <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">① 쓰던 곳에서 요금 할인</p>
+            <p className="text-[15px] font-extrabold text-[#0F6E56]">{benchmark.discount_note}</p>
+            <p className="text-[11px] text-[#0F6E56] opacity-70 mt-0.5">재약정하면 약정할인을 유지해요</p>
+          </div>
+        )}
+        {benchmark.reattach_subsidy_approx ? (
+          <div className="rounded-2xl bg-[#E1F5EE] border border-[#10b981]/20 p-4">
+            <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">② 재약정 사은품·지원금</p>
+            <p className="text-[20px] font-extrabold text-[#0F6E56]">대략 {approxManwon(benchmark.reattach_subsidy_approx)}</p>
+            <p className="text-[11px] text-[#0F6E56] opacity-70 mt-1 leading-relaxed">
+              신규 혜택을 먼저 알아보면 협상에 유리해요{benchmark.effective_month ? ` · ${benchmark.effective_month} 기준` : ''} · 실제는 달라요
+            </p>
+          </div>
+        ) : null}
+      </div>
+    ) : null
+
+  // 교체 업사이드 카드 — 신규가입 사은품(대략). 단정 아님.
+  const BenchmarkSwitchCard = () =>
+    benchmark?.new_subsidy_approx ? (
+      <div className="rounded-2xl bg-[#E1F5EE] border border-[#10b981]/20 p-4">
+        <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">바꾸면 신규가입 사은품</p>
+        <p className="text-[20px] font-extrabold text-[#0F6E56]">대략 {approxManwon(benchmark.new_subsidy_approx)}</p>
+        <p className="text-[11px] text-[#0F6E56] opacity-70 mt-1 leading-relaxed">
+          {benchmark.effective_month ? `${benchmark.effective_month} 기준 · ` : ''}실제는 기기·요금제·매장마다 달라요
+        </p>
+      </div>
+    ) : null
 
   const switchMode = (m: 'know' | 'unknown') => {
     setMode(m)
@@ -705,6 +753,7 @@ function DetailOverlay({
             {/* 그대로 분기 */}
             {planIntent === 'stay' && (
               <div className="space-y-3">
+                <BenchmarkKeepCards />
                 <div className="rounded-2xl bg-gray-50 p-4">
                   <p className="text-[13px] text-gray-600 leading-relaxed">
                     재약정 조건(사은품·요금할인)을 통신사에 문의하세요. 그냥 두면 혜택 없이 같은 요금이에요.
@@ -745,6 +794,7 @@ function DetailOverlay({
                     </p>
                   </div>
                 )}
+                <BenchmarkSwitchCard />
                 {/* 결합할인 경고 — 체크리스트에서 승격 (금액 단정 금지) */}
                 <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
                   <p className="text-[13px] text-amber-800 font-bold leading-relaxed">
@@ -832,6 +882,7 @@ function DetailOverlay({
                     </p>
                   </div>
                 )}
+                <BenchmarkKeepCards />
                 <ul className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
                   {[
                     '의무기간 끝나면 소유권 이전 여부 확인',

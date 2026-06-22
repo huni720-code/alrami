@@ -172,7 +172,24 @@ export const adminApi = {
   calculateBenchmarks: () => api.post('/admin/benchmarks/calculate'),
   saveBenchmarks: (items: BenchmarkItem[]) => api.post('/admin/benchmarks/save', { items }),
   getBenchmarks: () => api.get('/admin/benchmarks'),
+  // 시장 벤치마크(대략) — 수동 갱신
+  getMarketBenchmarks: () => api.get<MarketBenchmarkAdmin[]>('/admin/benchmarks/market'),
+  saveMarketBenchmarks: (items: MarketBenchmarkInput[]) =>
+    api.post('/admin/benchmarks/market', { items }),
 }
+
+export interface MarketBenchmark {
+  category: string
+  reattach_subsidy_approx: number | null
+  new_subsidy_approx: number | null
+  discount_note: string | null
+  source: string | null
+  effective_month: string | null
+}
+export interface MarketBenchmarkAdmin extends MarketBenchmark {
+  updated_at: string | null
+}
+export type MarketBenchmarkInput = MarketBenchmark
 
 // Admin types
 export interface AdminStats {
@@ -328,6 +345,10 @@ export const recommendationApi = {
   telecomEstimate: (currentFee: number) =>
     api.get<TelecomEstimate>('/recommendations/telecom-estimate', { params: { current_fee: currentFee } }),
   portfolio: () => api.get<Portfolio>('/recommendations/portfolio'),
+}
+
+export const benchmarkApi = {
+  market: () => api.get<MarketBenchmark[]>('/benchmarks/market'),
 }
 
 export const userApi = {

@@ -20,6 +20,7 @@ from app.models.crawl_task import CrawlTask
 from app.models.expense import Expense
 from app.models.product import Card, CardBenefit, TelecomPlan
 from app.models.saving_benchmark import SavingBenchmark
+from app.models.market_benchmark import MarketBenchmark
 from app.models.user import User
 from app.services.benchmark_calculator import calculate_card_benchmarks, calculate_telecom_benchmarks
 
@@ -597,3 +598,70 @@ def get_benchmarks(db: Session = Depends(get_db), admin: User = Depends(require_
         }
         for b in bms
     ]
+
+
+# ── 시장 벤치마크(대략) — 어드민 수동 갱신 ───────────────────────────────────
+# 코드에 박지 않고 DB에 둠. 어드민이 공개 출처(방통위 한도·공식 할인율) 보고 입력 → 적용.
+# 적용 시 같은 카테고리 기존 행 is_latest=false, 새 행 is_latest=true (이력 보존).
+
+class MarketBenchmarkBody(BaseModel):
+    category: str
+    reattach_subsidy_approx: Optional[int] = None
+    new_subsidy_approx: Optional[int] = None
+    discount_note: Optional[str] = None
+    source: Optional[str] = None
+    effective_month: Optional[str] = None
+
+
+class MarketBenchmarkSaveBody(BaseModel):
+    items: List[MarketBenchmarkBody]
+
+
+@router.get("/benchmarks/market")
+def get_market_benchmarks_admin(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    rows = (
+        db.query(MarketBenchmark)
+        .filter(MarketBenchmark.is_latest == True)  # noqa: E712
+        .order_by(MarketBenchmark.category)
+        .all()
+    )
+    return [
+        {
+            "category": r.category,
+            "reattach_subsidy_approx": r.reattach_subsidy_approx,
+            "new_subsidy_approx": r.new_subsidy_approx,
+            "discount_note": r.discount_note,
+            "source": r.source,
+            "effective_month": r.effective_month,
+            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/benchmarks/market")
+def save_market_benchmarks(
+    body: MarketBenchmarkSaveBody,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    now = datetime.now(timezone.utc)
+    for item in body.items:
+        # 같은 카테고리 기존 최신 행 내림
+        db.query(MarketBenchmark).filter(
+            MarketBenchmark.category == item.category,
+            MarketBenchmark.is_latest == True,  # noqa: E712
+        ).update({"is_latest": False})
+        db.add(MarketBenchmark(
+            category=item.category,
+            reattach_subsidy_approx=item.reattach_subsidy_approx,
+            new_subsidy_approx=item.new_subsidy_approx,
+            discount_note=item.discount_note,
+            source=item.source,
+            effective_month=item.effective_month,
+            is_latest=True,
+            updated_at=now,
+        ))
+    _log(db, "benchmark.market.save", admin.id, detail={"count": len(body.items)})
+    db.commit()
+    return {"saved": len(body.items)}
