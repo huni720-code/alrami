@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: impactful phone switch branch - approx subsidy card + monthly-saving (MVNO) card"
+git commit -m "fix: add admin sidebar links for data + engine/benchmark pages (were route-only, unreachable)"
 git push
 
 echo.
