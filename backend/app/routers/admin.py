@@ -665,3 +665,37 @@ def save_market_benchmarks(
     _log(db, "benchmark.market.save", admin.id, detail={"count": len(body.items)})
     db.commit()
     return {"saved": len(body.items)}
+
+
+# 공개 기준 레퍼런스 — 방통위 경품 한도·공식 약정할인율 기반(공개 정보).
+# 경쟁사 크롤 아님. 한도가 바뀌면 이 값만 갱신(드물게). '실제 사은품'이 아니라 '대략 한도/공식 규칙'.
+PUBLIC_BENCHMARK_REFERENCE = {
+    "인터넷": {"reattach_subsidy_approx": 150000, "new_subsidy_approx": 300000,
+              "discount_note": "재약정 시 약정할인 유지", "source": "방통위 경품 한도(공개 기준)"},
+    "TV": {"reattach_subsidy_approx": 150000, "new_subsidy_approx": 350000,
+           "discount_note": "재약정 시 약정할인 유지", "source": "방통위 경품 한도(공개 기준)"},
+    "정수기": {"reattach_subsidy_approx": None, "new_subsidy_approx": None,
+             "discount_note": "재계약 시 요금할인·사은품 협상", "source": "시장 대략"},
+    "휴대폰": {"reattach_subsidy_approx": None, "new_subsidy_approx": None,
+             "discount_note": "선택약정 25% 재약정 할인", "source": "공식 약정할인율"},
+}
+
+
+@router.post("/benchmarks/market/fetch")
+def fetch_market_benchmarks_draft(admin: User = Depends(require_admin)):
+    """공개 기준값(방통위 한도·공식 할인율)으로 '초안'을 만들어 반환(저장 안 함).
+    어드민이 검토·수정 후 /benchmarks/market 으로 적용. 라이브 경쟁사 스크랩 아님.
+    한도가 바뀌면 PUBLIC_BENCHMARK_REFERENCE만 갱신.
+    """
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    draft = []
+    for category, ref in PUBLIC_BENCHMARK_REFERENCE.items():
+        draft.append({
+            "category": category,
+            "reattach_subsidy_approx": ref["reattach_subsidy_approx"],
+            "new_subsidy_approx": ref["new_subsidy_approx"],
+            "discount_note": ref["discount_note"],
+            "source": ref["source"],
+            "effective_month": month,
+        })
+    return {"items": draft, "fetched_month": month}

@@ -176,6 +176,9 @@ export const adminApi = {
   getMarketBenchmarks: () => api.get<MarketBenchmarkAdmin[]>('/admin/benchmarks/market'),
   saveMarketBenchmarks: (items: MarketBenchmarkInput[]) =>
     api.post('/admin/benchmarks/market', { items }),
+  // 공개 기준값(방통위 한도·공식 할인율)으로 초안 fetch — 저장 X, 검토 후 적용
+  fetchMarketBenchmarksDraft: () =>
+    api.post<{ items: MarketBenchmarkInput[]; fetched_month: string }>('/admin/benchmarks/market/fetch'),
 }
 
 export interface MarketBenchmark {

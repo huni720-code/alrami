@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: market benchmark (approx, DB-backed, admin-updatable) + 2-axis keep cards + switch subsidy upside"
+git commit -m "feat: admin load-public-reference draft fetch for market benchmark (KCC subsidy cap / official discount, no live scrape)"
 git push
 
 echo.

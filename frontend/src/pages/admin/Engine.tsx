@@ -192,7 +192,9 @@ export default function Engine() {
 function MarketBenchmarkPanel() {
   const [rows, setRows] = useState<MarketBenchmarkInput[]>([])
   const [saving, setSaving] = useState(false)
+  const [fetching, setFetching] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
+  const [draftHint, setDraftHint] = useState<string | null>(null)
 
   useEffect(() => { load() }, [])
   const load = async () => {
@@ -229,17 +231,43 @@ function MarketBenchmarkPanel() {
     }
   }
 
+  // 공개 기준값(방통위 한도·공식 할인율)으로 초안 불러오기 — 저장 X, 폼만 채움. 라이브 스크랩 아님.
+  const handleFetchDraft = async () => {
+    setFetching(true)
+    try {
+      const { data } = await adminApi.fetchMarketBenchmarksDraft()
+      const byCat: Record<string, MarketBenchmarkInput> = {}
+      data.items.forEach((d) => { byCat[d.category] = d })
+      setRows((prev) => MARKET_CATS.map((c) => byCat[c] ?? prev.find((r) => r.category === c) ?? {
+        category: c, reattach_subsidy_approx: null, new_subsidy_approx: null,
+        discount_note: null, source: null, effective_month: null,
+      }))
+      setDraftHint(`공개 기준값(${data.fetched_month})을 불러왔어요. 검토·수정 후 "적용"하세요.`)
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || '불러오기 실패')
+    } finally {
+      setFetching(false)
+    }
+  }
+
   return (
     <div className="mt-8">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">시장 벤치마크 (대략)</p>
           <p className="text-xs text-gray-400 mt-1">
-            공개 출처(방통위 경품 한도·공식 약정할인율)를 보고 입력 → 적용. 앱엔 "대략 + 기준월"으로 표시돼요. 경쟁사 크롤 아님.
+            "공개 기준값 불러오기"(방통위 한도·공식 할인율 초안) → 검토·수정 → "적용". 앱엔 "대략 + 기준월"으로 표시돼요. 경쟁사 크롤 아님(라이브 스크랩 아님).
           </p>
         </div>
         <div className="flex items-center gap-3">
           {savedAt && <span className="text-xs text-gray-400">{new Date(savedAt).toLocaleString('ko-KR')} 갱신</span>}
+          <button
+            onClick={handleFetchDraft}
+            disabled={fetching}
+            className="border border-emerald-600 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            {fetching ? '불러오는 중...' : '공개 기준값 불러오기'}
+          </button>
           <button
             onClick={handleApply}
             disabled={saving}
@@ -249,6 +277,11 @@ function MarketBenchmarkPanel() {
           </button>
         </div>
       </div>
+      {draftHint && (
+        <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-4 py-2.5 text-xs text-emerald-700 mb-3">
+          {draftHint}
+        </div>
+      )}
       <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-100">
