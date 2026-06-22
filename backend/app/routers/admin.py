@@ -674,8 +674,10 @@ PUBLIC_BENCHMARK_REFERENCE = {
               "discount_note": "재약정 시 약정할인 유지", "source": "방통위 경품 한도(공개 기준)"},
     "TV": {"reattach_subsidy_approx": 150000, "new_subsidy_approx": 350000,
            "discount_note": "재약정 시 약정할인 유지", "source": "방통위 경품 한도(공개 기준)"},
-    "정수기": {"reattach_subsidy_approx": None, "new_subsidy_approx": None,
+    "정수기": {"reattach_subsidy_approx": 100000, "new_subsidy_approx": 200000,
              "discount_note": "재계약 시 요금할인·사은품 협상", "source": "시장 대략"},
+    # 휴대폰은 의도적으로 null — 결정카드가 A/B/C 진단(선택약정25%·알뜰폰 실제계산)을 쓰고
+    # 벤치마크 사은품 금액을 앱에 띄우지 않음. 지원금은 기기·요금제별이라 단일 대략이 오해를 줌.
     "휴대폰": {"reattach_subsidy_approx": None, "new_subsidy_approx": None,
              "discount_note": "선택약정 25% 재약정 할인", "source": "공식 약정할인율"},
 }

@@ -386,7 +386,7 @@ function DetailOverlay({
         <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">바꾸면 신규가입 사은품</p>
         <p className="text-[20px] font-extrabold text-[#0F6E56]">대략 {approxManwon(benchmark.new_subsidy_approx)}</p>
         <p className="text-[11px] text-[#0F6E56] opacity-70 mt-1 leading-relaxed">
-          {benchmark.effective_month ? `${benchmark.effective_month} 기준 · ` : ''}실제는 기기·요금제·매장마다 달라요
+          {benchmark.effective_month ? `${benchmark.effective_month} 기준 · ` : ''}실제는 {contract.category === '정수기' ? '렌탈사·상품마다' : '기기·요금제·매장마다'} 달라요
         </p>
       </div>
     ) : null
@@ -915,6 +915,7 @@ function DetailOverlay({
                     </p>
                   </div>
                 )}
+                <BenchmarkSwitchCard />
                 <ul className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
                   {[
                     '해지 위약금 0원인지 확인',

@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: admin load-public-reference draft fetch for market benchmark (KCC subsidy cap / official discount, no live scrape)"
+git commit -m "feat: water-purifier benchmark amounts + switch subsidy card (phone stays A/B/C, intentionally null)"
 git push
 
 echo.
