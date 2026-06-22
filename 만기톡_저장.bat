@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: tap-lift hover/press feedback on all pressable controls (.tap-lift)"
+git commit -m "fix: drop term assumption copy, simplify save label, boxed+tap-lift delete button, more sheet bottom padding"
 git push
 
 echo.

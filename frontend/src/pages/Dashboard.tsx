@@ -430,7 +430,7 @@ function DetailOverlay({
         </button>
       </div>
 
-      <div className="px-5 py-5 pb-12 space-y-6">
+      <div className="px-5 py-5 pb-16 space-y-6">
 
         {/* 누구 약정인가요 — 자유 입력 (예시만) */}
         <section>
@@ -643,7 +643,7 @@ function DetailOverlay({
                   </p>
                 </div>
                 <p className="text-[12px] text-[#0F6E56] font-semibold leading-relaxed">
-                  바꾸고 나면 새 약정을 등록하세요 — 다음 2년도 지켜봐 드려요.
+                  바꾸고 나면 새 약정을 등록하세요 — 다음 약정도 지켜봐 드려요.
                 </p>
               </div>
             )}
@@ -1023,7 +1023,7 @@ function DetailOverlay({
             onClick={handleSave}
             className="w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-[16px] rounded-2xl text-[16px] font-bold mb-3 transition-all tap-lift active:scale-[0.98]"
           >
-            {busy ? '저장 중...' : mode === 'know' ? '저장 (확정)' : '저장 (추정)'}
+            {busy ? '저장 중...' : '저장'}
           </button>
 
           {delConfirm ? (
@@ -1039,7 +1039,7 @@ function DetailOverlay({
             <button
               type="button"
               onClick={() => setDelConfirm(true)}
-              className="w-full text-center text-[14px] text-gray-500 py-3 min-h-[44px] rounded-xl active:bg-gray-100 transition-colors"
+              className="w-full text-center text-[14px] text-gray-400 font-medium py-3.5 min-h-[48px] rounded-2xl border border-gray-200 hover:text-gray-500 hover:border-gray-300 tap-lift active:bg-gray-50 transition-colors"
             >
               이 약정 삭제
             </button>
