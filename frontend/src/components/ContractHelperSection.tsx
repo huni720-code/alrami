@@ -9,7 +9,7 @@ function Chip({ label, selected, onSelect }: { label: string; selected: boolean;
     <button
       type="button"
       onClick={onSelect}
-      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
         selected ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
       }`}
     >
@@ -74,7 +74,7 @@ export default function ContractHelperSection({
             <>
               <a
                 href={`tel:${phoneNum}`}
-                className="flex items-center justify-center gap-2 w-full bg-[#10b981] text-white py-3.5 rounded-xl text-[15px] font-bold min-h-[52px]"
+                className="flex items-center justify-center gap-2 w-full bg-[#10b981] text-white py-3.5 rounded-xl text-[15px] font-bold min-h-[52px] tap-lift"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16v.92z" />
@@ -92,7 +92,7 @@ export default function ContractHelperSection({
               href={`https://search.naver.com/search.naver?query=${encodeURIComponent(hp + ' 고객센터')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-full border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl text-[14px] font-semibold min-h-[52px]"
+              className="flex items-center justify-center w-full border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl text-[14px] font-semibold min-h-[52px] tap-lift"
             >
               {hp} 고객센터 검색 →
             </a>

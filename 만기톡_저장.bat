@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: surface all lapsed contracts as decision cards on home (not just the most urgent one)"
+git commit -m "feat: tap-lift hover/press feedback on all pressable controls (.tap-lift)"
 git push
 
 echo.

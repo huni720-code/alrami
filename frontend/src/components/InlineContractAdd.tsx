@@ -18,7 +18,7 @@ function Chip({ label, selected, onSelect }: { label: string; selected: boolean;
     <button
       type="button"
       onClick={onSelect}
-      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
         selected ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
       }`}
     >
@@ -153,7 +153,7 @@ export default function InlineContractAdd({ onAdded }: { onAdded: () => void }) 
       <button
         type="button"
         onClick={togglePanel}
-        className="w-full py-4 flex items-center justify-center gap-2 text-gray-400 active:bg-gray-50 transition-all"
+        className="w-full py-4 flex items-center justify-center gap-2 text-gray-400 tap-lift active:bg-gray-50 transition-all"
       >
         <span className={`text-[18px] leading-none transition-transform ${open ? 'rotate-45' : ''}`}>+</span>
         <span className="text-[14px] font-semibold">가족 약정 추가</span>
@@ -172,7 +172,7 @@ export default function InlineContractAdd({ onAdded }: { onAdded: () => void }) 
                   key={cat}
                   type="button"
                   onClick={() => pickCategory(cat)}
-                  className={`rounded-2xl border-2 py-3 flex flex-col items-center gap-1 transition-all active:scale-[0.97] ${
+                  className={`rounded-2xl border-2 py-3 flex flex-col items-center gap-1 transition-all tap-lift active:scale-[0.97] ${
                     sel ? 'border-[#10b981] bg-[#E1F5EE]' : 'border-gray-200 bg-white'
                   }`}
                 >
@@ -288,7 +288,7 @@ export default function InlineContractAdd({ onAdded }: { onAdded: () => void }) 
                 type="button"
                 disabled={!canSave || busy}
                 onClick={handleSave}
-                className="w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-[15px] rounded-2xl text-[16px] font-bold transition-all active:scale-[0.98]"
+                className="w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-[15px] rounded-2xl text-[16px] font-bold transition-all tap-lift active:scale-[0.98]"
               >
                 {busy ? '저장 중...' : mode === 'know' ? '추가하기 (확정)' : '추가하기 (추정)'}
               </button>

@@ -40,3 +40,22 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* ── safe area (노치 대응) ─────────────────── */
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ── 탭 피드백: 손이 가까이 가면 살짝 떠오르고, 누르면 눌림 ──
+   누를 수 있는(눌러서 바꾸는) 요소에만 .tap-lift 적용.
+   unlayered 규칙이라 Tailwind 유틸리티(active:scale 등)를 안정적으로 덮어씀. */
+.tap-lift {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tap-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.1);
+  }
+}
+.tap-lift:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.08);
+  transition-duration: 0.05s;
+}

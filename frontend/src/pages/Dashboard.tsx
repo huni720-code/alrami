@@ -61,7 +61,7 @@ function Chip({ label, selected, onSelect }: { label: string; selected: boolean;
     <button
       type="button"
       onClick={onSelect}
-      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+      className={`px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
         selected ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
       }`}
     >
@@ -86,7 +86,7 @@ function UrgentCard({ contract, onTap }: { contract: ContractResponse; onTap: ()
     <button
       type="button"
       onClick={onTap}
-      className={`w-full border ${tone.card} rounded-2xl px-5 py-4 flex items-center justify-between text-left active:scale-[0.98] transition-all`}
+      className={`w-full border ${tone.card} rounded-2xl px-5 py-4 flex items-center justify-between text-left tap-lift active:scale-[0.98] transition-all`}
     >
       <div className="min-w-0">
         <p className={`text-[12px] font-semibold ${tone.sub}`}>
@@ -109,7 +109,7 @@ function CompactRow({ contract, onTap }: { contract: ContractResponse; onTap: ()
     <button
       type="button"
       onClick={onTap}
-      className="w-full flex items-center gap-3 px-1 py-3.5 text-left active:bg-gray-50 transition-colors"
+      className="w-full flex items-center gap-3 px-1 py-3.5 text-left rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
     >
       <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
         <CatIcon category={contract.category} size={18} className="text-[#10b981]" />
@@ -337,7 +337,7 @@ function DetailOverlay({
         type="button"
         disabled={busy}
         onClick={handleKeepDecision}
-        className="w-full bg-[#10b981] disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-[15px] active:scale-[0.98] transition-all"
+        className="w-full bg-[#10b981] disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-[15px] tap-lift active:scale-[0.98] transition-all"
       >
         이대로 둘게요
       </button>
@@ -448,7 +448,7 @@ function DetailOverlay({
               type="button"
               disabled={ownerBusy}
               onClick={handleSaveOwner}
-              className="mt-3 w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-3.5 rounded-2xl text-[15px] font-bold transition-all active:scale-[0.98]"
+              className="mt-3 w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-3.5 rounded-2xl text-[15px] font-bold transition-all tap-lift active:scale-[0.98]"
             >
               {ownerBusy ? '저장 중...' : '라벨 저장'}
             </button>
@@ -484,7 +484,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => setIntent('keep')}
-                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
                   intent === 'keep' ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
                 }`}
               >
@@ -493,7 +493,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => setIntent('switch')}
-                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
                   intent === 'switch' ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
                 }`}
               >
@@ -603,7 +603,7 @@ function DetailOverlay({
                         type="button"
                         disabled={!feeInput || feeSaving}
                         onClick={handleSaveFee}
-                        className="bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold px-4 rounded-xl text-[14px] transition-colors"
+                        className="bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold px-4 rounded-xl text-[14px] transition-colors tap-lift"
                       >
                         {feeSaving ? '...' : '확인'}
                       </button>
@@ -652,7 +652,7 @@ function DetailOverlay({
             <button
               type="button"
               onClick={() => setShowChecklistHelper((v) => !v)}
-              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] active:scale-[0.98] transition-all"
+              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] tap-lift active:scale-[0.98] transition-all"
             >
               <span>고객센터 연락 · 약정일 확인</span>
               {showChecklistHelper ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -685,7 +685,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => setPlanIntent('stay')}
-                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
                   planIntent === 'stay' ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
                 }`}
               >
@@ -694,7 +694,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => setPlanIntent('leave')}
-                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
                   planIntent === 'leave' ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
                 }`}
               >
@@ -772,7 +772,7 @@ function DetailOverlay({
             <button
               type="button"
               onClick={() => setShowChecklistHelper((v) => !v)}
-              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] active:scale-[0.98] transition-all"
+              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] tap-lift active:scale-[0.98] transition-all"
             >
               <span>고객센터 연락 · 약정일 확인</span>
               {showChecklistHelper ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -805,7 +805,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => setPlanIntent('stay')}
-                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
                   planIntent === 'stay' ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
                 }`}
               >
@@ -814,7 +814,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => setPlanIntent('leave')}
-                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] active:scale-[0.97] ${
+                className={`flex-1 py-2.5 rounded-full border text-[13px] font-semibold transition-colors min-h-[44px] tap-lift active:scale-[0.97] ${
                   planIntent === 'leave' ? 'border-[#10b981] bg-[#E1F5EE] text-[#0F6E56]' : 'border-gray-200 text-gray-600 bg-white'
                 }`}
               >
@@ -884,7 +884,7 @@ function DetailOverlay({
             <button
               type="button"
               onClick={() => setShowChecklistHelper((v) => !v)}
-              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] active:scale-[0.98] transition-all"
+              className="mt-3 w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] tap-lift active:scale-[0.98] transition-all"
             >
               <span>렌탈사 연락 · 약정일 확인</span>
               {showChecklistHelper ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -911,7 +911,7 @@ function DetailOverlay({
               <button
                 type="button"
                 onClick={() => { setFeeInput(localFee ? String(localFee) : ''); setFeeEditing(true) }}
-                className="text-[13px] text-[#0F6E56] font-bold min-h-[44px] px-3 rounded-xl active:bg-[#E1F5EE] transition-colors"
+                className="text-[13px] text-[#0F6E56] font-bold min-h-[44px] px-3 rounded-xl active:bg-[#E1F5EE] transition-colors tap-lift"
               >
                 {localFee ? '수정' : '입력'}
               </button>
@@ -932,7 +932,7 @@ function DetailOverlay({
                 type="button"
                 disabled={!feeInput || feeSaving}
                 onClick={handleSaveFee}
-                className="bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold px-5 rounded-2xl text-[14px] transition-colors"
+                className="bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold px-5 rounded-2xl text-[14px] transition-colors tap-lift"
               >
                 {feeSaving ? '...' : '확인'}
               </button>
@@ -1000,7 +1000,7 @@ function DetailOverlay({
                 <button
                   type="button"
                   onClick={() => setShowHelper((v) => !v)}
-                  className="w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] active:scale-[0.98] transition-all"
+                  className="w-full flex items-center justify-between text-[14px] text-[#0F6E56] font-bold bg-[#E1F5EE] border border-[#10b981]/40 rounded-2xl px-4 py-3.5 min-h-[48px] tap-lift active:scale-[0.98] transition-all"
                 >
                   <span>약정일 정확히 확인하는 법</span>
                   {showHelper ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -1021,7 +1021,7 @@ function DetailOverlay({
             type="button"
             disabled={!canSave || busy}
             onClick={handleSave}
-            className="w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-[16px] rounded-2xl text-[16px] font-bold mb-3 transition-all active:scale-[0.98]"
+            className="w-full bg-[#10b981] disabled:bg-gray-100 disabled:text-gray-400 text-white py-[16px] rounded-2xl text-[16px] font-bold mb-3 transition-all tap-lift active:scale-[0.98]"
           >
             {busy ? '저장 중...' : mode === 'know' ? '저장 (확정)' : '저장 (추정)'}
           </button>
@@ -1031,7 +1031,7 @@ function DetailOverlay({
               type="button"
               disabled={delBusy}
               onClick={handleDelete}
-              className="w-full border-2 border-red-400 text-red-500 py-[14px] rounded-2xl text-[15px] font-semibold transition-all active:scale-[0.98]"
+              className="w-full border-2 border-red-400 text-red-500 py-[14px] rounded-2xl text-[15px] font-semibold transition-all tap-lift active:scale-[0.98]"
             >
               {delBusy ? '삭제 중...' : '정말 삭제할게요'}
             </button>
@@ -1109,7 +1109,7 @@ function SwitchPrompt({
           type="button"
           disabled={busy}
           onClick={() => answer(true)}
-          className="flex-1 bg-[#10b981] disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-[14px] transition-all active:scale-[0.97]"
+          className="flex-1 bg-[#10b981] disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-[14px] transition-all tap-lift active:scale-[0.97]"
         >
           예, 갈아탔어요
         </button>
@@ -1117,7 +1117,7 @@ function SwitchPrompt({
           type="button"
           disabled={busy}
           onClick={() => answer(false)}
-          className="flex-1 border border-gray-200 text-gray-500 font-semibold py-2.5 rounded-xl text-[14px] transition-all active:scale-[0.97]"
+          className="flex-1 border border-gray-200 text-gray-500 font-semibold py-2.5 rounded-xl text-[14px] transition-all tap-lift active:scale-[0.97]"
         >
           아니오
         </button>
@@ -1159,7 +1159,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <button
         type="button"
         onClick={onAdd}
-        className="flex items-center gap-2 bg-[#10b981] text-white font-bold px-8 py-4 rounded-2xl text-[16px] shadow-md active:scale-[0.98] transition-all"
+        className="flex items-center gap-2 bg-[#10b981] text-white font-bold px-8 py-4 rounded-2xl text-[16px] shadow-md tap-lift active:scale-[0.98] transition-all"
       >
         <Plus size={18} />
         약정 추가하고 지킴 시작
