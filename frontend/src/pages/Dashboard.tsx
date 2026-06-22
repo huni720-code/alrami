@@ -383,7 +383,9 @@ function DetailOverlay({
   const BenchmarkSwitchCard = () =>
     benchmark?.new_subsidy_approx ? (
       <div className="rounded-2xl bg-[#E1F5EE] border border-[#10b981]/20 p-4">
-        <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">바꾸면 신규가입 사은품</p>
+        <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">
+          {contract.category === '휴대폰' ? '바꾸면 공시지원금' : contract.category === '정수기' ? '바꾸면 신규 렌탈 사은품' : '바꾸면 신규가입 사은품'}
+        </p>
         <p className="text-[20px] font-extrabold text-[#0F6E56]">대략 {approxManwon(benchmark.new_subsidy_approx)}</p>
         <p className="text-[11px] text-[#0F6E56] opacity-70 mt-1 leading-relaxed">
           {benchmark.effective_month ? `${benchmark.effective_month} 기준 · ` : ''}실제는 {contract.category === '정수기' ? '렌탈사·상품마다' : '기기·요금제·매장마다'} 달라요
@@ -680,6 +682,24 @@ function DetailOverlay({
                     </p>
                   </div>
                 )}
+
+                {/* 임팩트 ① 공시지원금 대략(바꾸면) */}
+                <BenchmarkSwitchCard />
+
+                {/* 임팩트 ② 월납입금 줄이기 — 알뜰폰 절감(백엔드 진단값) */}
+                {!diagLoading && hasFee && diagnosis && diagnosis.saving_annual > 0 && (
+                  <div className="rounded-2xl bg-[#E1F5EE] border border-[#10b981]/20 p-4">
+                    <p className="text-[11px] text-[#0F6E56] font-semibold mb-0.5">월 납입금 줄이려면</p>
+                    <p className="text-[20px] font-extrabold text-[#0F6E56]">
+                      알뜰폰 월 약 {diagnosis.saving_monthly.toLocaleString()}원 ↓
+                    </p>
+                    <p className="text-[13px] text-[#0F6E56] font-semibold mt-0.5">
+                      연 약 {Math.round(diagnosis.saving_annual / 10000)}만원 아껴요 (추정)
+                    </p>
+                    <p className="text-[11px] text-[#0F6E56] opacity-70 mt-1 leading-relaxed">새 폰은 자급제로 사고 알뜰폰 요금제 조합 · 실제 요금제·통화량에 따라 달라요</p>
+                  </div>
+                )}
+
                 <div className="rounded-2xl bg-gray-50 p-4">
                   <p className="text-[13px] text-gray-600 leading-relaxed">
                     통신사에서 새 폰: 공시지원금 vs 선택약정 중 유리한 쪽. 금액은 기기·요금제마다 달라요.

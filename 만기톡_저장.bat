@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "feat: water-purifier benchmark amounts + switch subsidy card (phone stays A/B/C, intentionally null)"
+git commit -m "feat: impactful phone switch branch - approx subsidy card + monthly-saving (MVNO) card"
 git push
 
 echo.
