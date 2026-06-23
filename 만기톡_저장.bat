@@ -25,7 +25,7 @@ echo ============================================
 echo  [3/3] Commit and push
 echo ============================================
 git add -A
-git commit -m "fix: add admin sidebar links for data + engine/benchmark pages (were route-only, unreachable)"
+git commit -m "chore(deploy): fix requirements encoding, env-driven CORS + frontend API base, start.sh, .env.example"
 git push
 
 echo.

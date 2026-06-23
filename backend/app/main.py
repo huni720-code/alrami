@@ -4,12 +4,18 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.models  # noqa: F401 - 모델 등록
 from app.routers import auth_router, users_router, alarms_router, expenses_router, admin_router, recommendations_router, my_cards_router, dashboard_router, import_router, contracts_router, switch_logs_router, benchmarks_router
 from app.services.alarm_scheduler import start_scheduler, stop_scheduler
+from app.core.config import settings
 
 app = FastAPI(title="만기톡 API", version="0.1.0")
 
+# CORS 허용 출처 — 로컬 기본 + 배포 도메인(CORS_ORIGINS env, 콤마 구분)
+_origins = ["http://localhost:5173", "http://localhost:5174"]
+if settings.CORS_ORIGINS:
+    _origins += [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

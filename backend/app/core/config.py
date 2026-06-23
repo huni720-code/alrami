@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     KAKAO_SWITCH_FOLLOWUP_TEMPLATE_CODE: str = "ALRAMI_SWITCH_FOLLOWUP"
     # 서비스 URL — 알림톡 갈아타기 링크에 사용
     SERVICE_URL: str = "http://localhost:5173"
+    # CORS 허용 출처 — 배포 시 프론트 도메인을 콤마로 추가(예: "https://mangitalk.vercel.app")
+    CORS_ORIGINS: Optional[str] = None
 
     class Config:
         env_file = ".env"

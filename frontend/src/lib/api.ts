@@ -4,8 +4,9 @@ import type { ImportExpenseItem, ImportResult } from '../types/importExpense'
 
 export type { DashboardKpi }
 
+// 개발: '/api'(vite 프록시 → localhost:8000). 배포: VITE_API_URL=https://<백엔드>/api
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
   headers: { 'Content-Type': 'application/json' },
 })
 
